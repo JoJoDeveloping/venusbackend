@@ -10,7 +10,15 @@ import venusbackend.riscv.*
 import venusbackend.riscv.insts.dsl.types.Instruction
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
+import venusbackend.simulator.comm.MotherboardConnection
+import venusbackend.simulator.comm.PropertyManager
+import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
+import java.io.IOException
+import java.net.InetAddress
+import java.net.UnknownHostException
+import java.util.logging.Level
+import java.util.logging.Logger
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -40,6 +48,9 @@ class Simulator(
     var exitcode: Int? = null
 
     val alloc: Alloc = Alloc(this)
+
+    var logger: Logger = Logger.getLogger(Simulator::class.java.toString())
+    var connection: MotherboardConnection? = null
 
     init {
         (state).getReg(1)
@@ -193,6 +204,27 @@ class Simulator(
             this.removeAllArgsFromMem()
             addArgsToMem()
         }
+    }
+
+    fun connectToMotherboard(host: String? = null, port: Int? = null) {
+        val propertyManager = PropertyManager()
+        if (host != null && port != null) {
+            propertyManager.hostname = host
+            propertyManager.port = port
+        }
+        val connection = MotherboardConnection(propertyManager.startAddress, 0)
+        connection.addConnectionListener(LoggingConnectionListener())
+        try {
+            connection.establishConnection(InetAddress.getByName(propertyManager.hostname), propertyManager.port)
+        } catch (e: UnknownHostException) {
+            logger.log(Level.SEVERE,"Could not connect to host " + propertyManager.hostname, e)
+            throw SimulatorError()
+        } catch (e: IOException) {
+            logger.log(Level.SEVERE,"Could not connect to host " + propertyManager.hostname, e)
+            throw SimulatorError()
+        }
+        this.connection = connection
+        this.state.mem = MemoryVMB(connection)
     }
 
     fun addArg(arg: String) {
