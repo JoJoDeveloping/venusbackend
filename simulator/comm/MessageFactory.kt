@@ -22,15 +22,15 @@ object MessageFactory {
         return createReadMessage(address, Message.ID_READBYTE)
     }
 
-    fun createReadWydeMessage(address: Long) : Message {
+    fun createReadHalfMessage(address: Long) : Message {
         return createReadMessage(address, Message.ID_READWYDE)
     }
 
-    fun createReadTetraMessage(address: Long) : Message {
+    fun createReadWordMessage(address: Long) : Message {
         return createReadMessage(address, Message.ID_READTETRA)
     }
 
-    fun createReadOctaMessage(address: Long) : Message {
+    fun createReadLongMessage(address: Long) : Message {
         return createReadMessage(address, Message.ID_READ)
     }
 
@@ -38,15 +38,15 @@ object MessageFactory {
         return createWriteMessage(address, byte, Message.ID_WRITEBYTE, MemSize.BYTE)
     }
 
-    fun createWriteWydeMessage(address: Long, wyde : Int) : Message {
+    fun createWriteHalfMessage(address: Long, wyde : Int) : Message {
         return createWriteMessage(address, wyde, Message.ID_WRITEWYDE, MemSize.HALF)
     }
 
-    fun createWriteTetraMessage(address: Long, tetra : Int) : Message {
+    fun createWriteWordMessage(address: Long, tetra : Int) : Message {
         return createWriteMessage(address, tetra, Message.ID_WRITETETRA, MemSize.WORD)
     }
 
-    fun createWriteOctaMessage(address: Long, octa : Long) : Message {
+    fun createWriteLongMessage(address: Long, octa : Long) : Message {
         return createWriteMessage(address, octa, Message.ID_WRITE, MemSize.LONG)
     }
 

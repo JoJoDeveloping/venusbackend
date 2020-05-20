@@ -53,7 +53,7 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         }
         val translatedAddress = translate(addr)
         val tmp = value and 0xFFFF
-        val message = MessageFactory.createWriteWydeMessage(translatedAddress, tmp.toInt())
+        val message = MessageFactory.createWriteHalfMessage(translatedAddress, tmp.toInt())
         connection.send(message)
     }
 
@@ -63,13 +63,13 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         if (value is Long) {
             tmp = value and 0xFFFFFFFFL
         }
-        val message = MessageFactory.createWriteTetraMessage(translatedAddress, tmp.toInt())
+        val message = MessageFactory.createWriteWordMessage(translatedAddress, tmp.toInt())
         connection.send(message)
     }
 
     override fun storeLong(addr: Number, value: Number) {
         val translatedAddress = translate(addr)
-        val message = MessageFactory.createWriteOctaMessage(translatedAddress, value.toLong())
+        val message = MessageFactory.createWriteLongMessage(translatedAddress, value.toLong())
         connection.send(message)
     }
 
@@ -92,9 +92,9 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         var message : Message? = null
         when(size) {
             MemSize.BYTE -> message = MessageFactory.createReadByteMessage(translatedAddress)
-            MemSize.HALF -> message = MessageFactory.createReadWydeMessage(translatedAddress)
-            MemSize.WORD -> message = MessageFactory.createReadTetraMessage(translatedAddress)
-            MemSize.LONG -> message = MessageFactory.createReadOctaMessage(translatedAddress)
+            MemSize.HALF -> message = MessageFactory.createReadHalfMessage(translatedAddress)
+            MemSize.WORD -> message = MessageFactory.createReadWordMessage(translatedAddress)
+            MemSize.LONG -> message = MessageFactory.createReadLongMessage(translatedAddress)
         }
         if (message == null) {
             throw SimulatorError()
