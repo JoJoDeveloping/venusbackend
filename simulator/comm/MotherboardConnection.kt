@@ -32,6 +32,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         outputStream = s!!.getOutputStream()
         `in` = s!!.getInputStream()
         connectionListeners.add(readListener)
+        connectionListeners.add(LoggingConnectionListener())
         register()
         Thread(object : Runnable {
             override fun run() {

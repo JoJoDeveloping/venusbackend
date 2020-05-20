@@ -50,7 +50,7 @@ class Simulator(
     val alloc: Alloc = Alloc(this)
 
     var logger: Logger = Logger.getLogger(Simulator::class.java.toString())
-    var connection: MotherboardConnection? = null
+    lateinit var connection: MotherboardConnection
 
     init {
         (state).getReg(1)
@@ -213,7 +213,6 @@ class Simulator(
             propertyManager.port = port
         }
         val connection = MotherboardConnection(propertyManager.startAddress, 0)
-        connection.addConnectionListener(LoggingConnectionListener())
         try {
             connection.establishConnection(InetAddress.getByName(propertyManager.hostname), propertyManager.port)
         } catch (e: UnknownHostException) {
