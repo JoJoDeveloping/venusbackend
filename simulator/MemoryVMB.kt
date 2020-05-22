@@ -1,7 +1,9 @@
 package venusbackend.simulator
 
 import venusbackend.and
+import venusbackend.plus
 import venusbackend.riscv.MemSize
+import venusbackend.shr
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
@@ -21,15 +23,16 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
     }
 
     override fun loadHalfWord(addr: Number): Int {
-        return read(addr, MemSize.HALF).toInt()
+        //return read(addr, MemSize.HALF).toInt()
+        val lsb = loadByte(addr)
+        val msbb = loadByte(addr + 1)
+        val msb = (msbb shl 8)
+        return msb or lsb
     }
-
-    override fun loadWord(addr: Number): Int {
-        if (translate(addr) % MemSize.HALF.size != 0L) {
-            throw AlignmentError()
-        }
+    override fun loadWord(addr: Number): Int = (loadHalfWord(addr + 2) shl 16) or loadHalfWord(addr)
+    /*override fun loadWord(addr: Number): Int {
         return read(addr, MemSize.WORD).toInt()
-    }
+    }*/
 
     override fun loadLong(addr: Number): Long {
         return read(addr, MemSize.LONG).toLong()
@@ -49,22 +52,29 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
 
     override fun storeHalfWord(addr: Number, value: Number) {
         if (translate(addr) % MemSize.HALF.size != 0L) {
+                 throw AlignmentError()
+        }
+        storeByte(addr, value)
+        storeByte(addr + 1, value shr 8)
+        /*if (translate(addr) % MemSize.HALF.size != 0L) {
             throw AlignmentError()
         }
         val translatedAddress = translate(addr)
         val tmp = value and 0xFFFF
         val message = MessageFactory.createWriteHalfMessage(translatedAddress, tmp.toInt())
-        connection.send(message)
+        connection.send(message)*/
     }
 
     override fun storeWord(addr: Number, value: Number) {
-        val translatedAddress = translate(addr)
+        /*val translatedAddress = translate(addr)
         var tmp = value
         if (value is Long) {
             tmp = value and 0xFFFFFFFFL
         }
         val message = MessageFactory.createWriteWordMessage(translatedAddress, tmp.toInt())
-        connection.send(message)
+        connection.send(message)*/
+        storeHalfWord(addr, value)
+        storeHalfWord(addr + 2, value shr 16)
     }
 
     override fun storeLong(addr: Number, value: Number) {
@@ -78,7 +88,7 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
      * TODO: Implement so that it really translates the address
      */
     private fun translate(addr: Number) : Long {
-        return addr.toLong()
+        return addr.toLong() or 0x0000_0001_0000_0000 // and 0x0FFFFFFF or 0x100000000 //0000000100000000
     }
 
     /**
