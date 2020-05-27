@@ -19,8 +19,10 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     private var outputStream: OutputStream? = null
     private var `in`: InputStream? = null
     private val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
-    private val readListener : ReadConnectionListener = ReadConnectionListener(CountDownLatch(1))
+    private val readListener : ReadConnectionListener = ReadConnectionListener(CountDownLatch(1), connection = this)
     private var logger: Logger = Logger.getLogger(LoggingConnectionListener::class.java.toString())
+    var countDownLatch : CountDownLatch = CountDownLatch(1)
+    var isOn : Boolean = false
 
 
     @Throws(IOException::class)
@@ -69,6 +71,15 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         return readListener
     }
 
+    fun waitForMotherBoardPower() {
+        if (countDownLatch.count == 1L){
+            print("Power...")
+            countDownLatch.await()
+            println("ON")
+            isOn = true
+        }
+    }
+
     /*
      * This message will only be called from the receiver thread.
      */
@@ -76,8 +87,16 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         for (listener in connectionListeners) {
             if (message.isBusMessage) {
                 when (message.id) {
-                    Message.ID_POWERON -> listener.powerOn()
-                    Message.ID_POWEROFF -> listener.powerOff()
+                    Message.ID_POWERON -> {
+                        countDownLatch.countDown()
+                        isOn = true
+                        listener.powerOn()
+                    }
+                    Message.ID_POWEROFF -> {
+                        listener.powerOff()
+                        isOn = false
+                        countDownLatch = CountDownLatch(1)
+                    }
                     Message.ID_INTERRUPT -> listener.interruptRequest(message.slot.toInt())
                     Message.ID_RESET -> listener.reset()
                     Message.ID_TERMINATE -> listener.terminate()
@@ -90,7 +109,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                     Message.ID_WYDEREPLY -> listener.readData(message)
                     Message.ID_TETRAREPLY -> listener.readData(message)
                     Message.ID_READREPLY -> listener.readData(message)
-                    else -> logger.warning("unhandeled message id " + message.id + " does it have payload?: " + message.hasPayload())
+                    else -> logger.warning("unhandeled message id " + message.id)
                 }
             }
         }

@@ -1,6 +1,8 @@
 package venusbackend.simulator.comm
 
+import venusbackend.and
 import venusbackend.riscv.MemSize
+import venusbackend.shr
 import kotlin.experimental.or
 
 object MessageFactory {
@@ -55,8 +57,20 @@ object MessageFactory {
         message.setType((Message.TYPE_ADDRESS or Message.TYPE_PAYLOAD))
         when(size) {
             MemSize.BYTE -> message.appendToPayload(value.toByte())
-            MemSize.HALF -> message.appendToPayload(value.toInt() shl 16)
-            MemSize.WORD -> message.appendToPayload(value.toInt())
+            MemSize.HALF -> {
+                val lsb = (value and 0xFF).toByte()
+                val msb = ((value.toInt() shr 8) and 0xFF).toByte()
+                val half = (((0 or lsb.toInt()) shl 8) or msb.toInt()) shl 16
+                message.appendToPayload(half)
+            }
+            MemSize.WORD -> {
+                val fsb = (value and 0xFF).toByte()
+                val sdb = ((value.toInt() shr 8) and 0xFF).toByte()
+                val thb = ((value.toInt() shr 16) and 0xFF).toByte()
+                val fhb = ((value.toInt() shr 24) and 0xFF).toByte()
+                val word = ((((((0 or fsb.toInt()) shl 8) or sdb.toInt()) shl 8) or thb.toInt()) shl 8) or fhb.toInt()
+                message.appendToPayload(word)
+            }
             MemSize.LONG -> message.appendToPayload(value.toLong())
         }
         message.finalizePayloadAndSize()

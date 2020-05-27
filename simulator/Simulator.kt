@@ -12,7 +12,6 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
-import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
 import java.io.IOException
 import java.net.InetAddress
@@ -215,6 +214,9 @@ class Simulator(
         val connection = MotherboardConnection(propertyManager.startAddress, 0)
         try {
             connection.establishConnection(InetAddress.getByName(propertyManager.hostname), propertyManager.port)
+            if (!connection.isOn) {
+                connection.waitForMotherBoardPower()
+            }
         } catch (e: UnknownHostException) {
             logger.log(Level.SEVERE,"Could not connect to host " + propertyManager.hostname, e)
             throw SimulatorError()
