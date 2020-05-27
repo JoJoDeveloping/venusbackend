@@ -33,7 +33,9 @@ object MessageFactory {
     }
 
     fun createReadLongMessage(address: Long) : Message {
-        return createReadMessage(address, Message.ID_READ)
+        val message = createReadMessage(address, Message.ID_READ)
+        message.size = 0
+        return message
     }
 
     fun createWriteByteMessage(address: Long, byte : Byte) : Message {
@@ -62,16 +64,24 @@ object MessageFactory {
                 val msb = ((value.toInt() shr 8) and 0xFF).toByte()
                 val half = (((0 or lsb.toInt()) shl 8) or msb.toInt()) shl 16
                 message.appendToPayload(half)
+
             }
             MemSize.WORD -> {
-                val fsb = (value and 0xFF).toByte()
-                val sdb = ((value.toInt() shr 8) and 0xFF).toByte()
-                val thb = ((value.toInt() shr 16) and 0xFF).toByte()
-                val fhb = ((value.toInt() shr 24) and 0xFF).toByte()
-                val word = ((((((0 or fsb.toInt()) shl 8) or sdb.toInt()) shl 8) or thb.toInt()) shl 8) or fhb.toInt()
+                var word = 0
+                for (index in 0..2) {
+                    word = word or ((value.toInt() shr index*8) and 0xFF)
+                    word = word shl 8
+                }
                 message.appendToPayload(word)
             }
-            MemSize.LONG -> message.appendToPayload(value.toLong())
+            MemSize.LONG -> {
+                var long = 0L
+                for (index in 0..6) {
+                    long = long or ((value.toLong() shr index*8) and 0xFF)
+                    long = long shl 8
+                }
+                message.appendToPayload(long)
+            }
         }
         message.finalizePayloadAndSize()
         message.id = id

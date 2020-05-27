@@ -29,15 +29,19 @@ class ReadConnectionListener(private var countDownLatch: CountDownLatch, private
                 Message.ID_BYTEREPLY -> byte = (message.getPayload()[0] and 0xFF).toInt()
                 Message.ID_WYDEREPLY -> half = ((message.getPayload()[1] and 0xFF).toInt() shl 8) or (message.getPayload()[0] and 0xFF).toInt()
                 Message.ID_TETRAREPLY -> {
-                    val byte1 = (message.getPayload()[3] and 0xFF).toInt()
-                    val byte2 = (message.getPayload()[2] and 0xFF).toInt()
-                    val byte3 = (message.getPayload()[1] and 0xFF).toInt()
-                    val byte4 = (message.getPayload()[0] and 0xFF).toInt()
-                    word = (((((byte1 shl 8) or byte2) shl 8) or byte3) shl 8) or byte4
+                    for (i in message.getPayload().size-1 downTo 0) {
+                        word = word!! or (message.getPayload()[i] and 0xFF).toInt()
+                        if(i != 0) {
+                            word = word!! shl 8
+                        }
+                    }
                 }
                 Message.ID_READREPLY -> {
-                    for (i in message.getPayload().size downTo 0 ) {
-                        long = long!! shl 8 or (message.getPayload()[i] and 0xFF).toLong()
+                    for (i in message.getPayload().size-1 downTo 0 ) {
+                        long = long!! or (message.getPayload()[i] and 0xFF).toLong()
+                        if(i != 0) {
+                            long = long!! shl 8
+                        }
                     }
                 }
             }

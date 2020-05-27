@@ -1,9 +1,7 @@
 package venusbackend.simulator
 
 import venusbackend.and
-import venusbackend.plus
 import venusbackend.riscv.MemSize
-import venusbackend.shr
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
@@ -21,22 +19,12 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
 
     override fun loadByte(address: Number): Int {
         return read(address, MemSize.BYTE).toInt().and(0xff)
-        //return read2(address)
     }
 
     override fun loadHalfWord(addr: Number): Int {
         return read(addr, MemSize.HALF).toInt().and(0xffff)
-        /*val lsb = loadByte(addr)
-        val msbb = loadByte(addr + 1)
-        val msb = (msbb shl 8)
-        val result = msb or lsb
-        /*if ((addr == 0x00000018 && result == 0x9300) || (addr == 0x00000020 && result == 0xe300) || (addr == 0x0000001C && result == 0x2300)
-                || (addr == 0x00000018 && result == 0x10809393)|| (addr == 0x00000000 && result == 0x10011313)) {
-            println("Found it! address of lsb: ${toHex(addr)} address of msbb: ${toHex(addr + 1)} and the values lsb: $lsb msb: $msb")
-        }*/
-        return result*/
     }
-    //override fun loadWord(addr: Number): Int = (loadHalfWord(addr + 2) shl 16) or loadHalfWord(addr)
+
     override fun loadWord(addr: Number): Int {
         return read(addr, MemSize.WORD).toInt()
     }
@@ -58,11 +46,6 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
 
 
     override fun storeHalfWord(addr: Number, value: Number) {
-        /*if (translate(addr) % MemSize.HALF.size != 0L) {
-                 throw AlignmentError()
-        }
-        storeByte(addr, value)
-        storeByte(addr + 1, value shr 8)*/
         if (translate(addr) % MemSize.HALF.size != 0L) {
             throw AlignmentError()
         }
@@ -80,8 +63,6 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         }
         val message = MessageFactory.createWriteWordMessage(translatedAddress, tmp.toInt())
         connection.send(message)
-        //storeHalfWord(addr, value)
-        //storeHalfWord(addr + 2, value shr 16)
     }
 
     override fun storeLong(addr: Number, value: Number) {
@@ -116,7 +97,9 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         if (message == null) {
             throw SimulatorError()
         }
-        message.finalizePayloadAndSize()
+        if (size != MemSize.LONG) {
+            message.finalizePayloadAndSize()
+        }
         val listener = connection.getReadListener()
         val countdown = listener.getCountDownLatch()
         connection.send(message)
