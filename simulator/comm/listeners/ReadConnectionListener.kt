@@ -2,18 +2,17 @@ package venusbackend.simulator.comm.listeners
 
 import venusbackend.and
 import venusbackend.simulator.comm.Message
-import venusbackend.simulator.comm.MotherboardConnection
 import java.util.concurrent.CountDownLatch
 
-class ReadConnectionListener(private var countDownLatch: CountDownLatch, private val delay : Long = 1000, private val connection: MotherboardConnection) : IConnectionListener() {
+class ReadConnectionListener() : IConnectionListener() {
     var byte : Int? = null
     var half : Int? = null
     var word : Int? = null
     var long : Long? = null
+    private lateinit var countDownLatch : CountDownLatch
 
-
-    fun getCountDownLatch() : CountDownLatch {
-        return countDownLatch
+    fun setCountDownLatch(countDownLatch: CountDownLatch) {
+        this.countDownLatch = countDownLatch
     }
 
     /**
@@ -46,14 +45,12 @@ class ReadConnectionListener(private var countDownLatch: CountDownLatch, private
                 }
             }
             countDownLatch.countDown()
-            countDownLatch = CountDownLatch(1)
         } else {
             byte = null
             half = null
             word = null
             long = null
             countDownLatch.countDown()
-            countDownLatch = CountDownLatch(1)
         }
     }
 }

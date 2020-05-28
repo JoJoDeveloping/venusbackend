@@ -19,7 +19,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     private var outputStream: OutputStream? = null
     private var `in`: InputStream? = null
     private val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
-    private val readListener : ReadConnectionListener = ReadConnectionListener(CountDownLatch(1), connection = this)
+    private val readListener : ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger.getLogger(LoggingConnectionListener::class.java.toString())
     var countDownLatch : CountDownLatch = CountDownLatch(1)
     var isOn : Boolean = false

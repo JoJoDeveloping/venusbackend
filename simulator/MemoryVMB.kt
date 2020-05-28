@@ -5,6 +5,7 @@ import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class MemoryVMB(private val connection : MotherboardConnection) : Memory {
@@ -101,9 +102,10 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
             message.finalizePayloadAndSize()
         }
         val listener = connection.getReadListener()
-        val countdown = listener.getCountDownLatch()
+        val countdown = CountDownLatch(1)
+        listener.setCountDownLatch(countdown)
         connection.send(message)
-        countdown.await(1, TimeUnit.SECONDS)
+        countdown.await(30, TimeUnit.SECONDS)
         var tmp : Number? = null
         when(size) {
             MemSize.BYTE -> {
