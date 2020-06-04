@@ -1,18 +1,25 @@
 package venusbackend.simulator.comm.listeners
 
+import com.soywiz.klock.DateTime
+import com.soywiz.klock.milliseconds
 import venusbackend.and
 import venusbackend.simulator.comm.Message
-import java.util.concurrent.CountDownLatch
 
-class ReadConnectionListener() : IConnectionListener() {
+class ReadConnectionListener : IConnectionListener() {
     var byte : Int? = null
     var half : Int? = null
     var word : Int? = null
     var long : Long? = null
-    private lateinit var countDownLatch : CountDownLatch
+    var done : Boolean = false
 
-    fun setCountDownLatch(countDownLatch: CountDownLatch) {
-        this.countDownLatch = countDownLatch
+    fun waitForReadingResponse(timeout: Long = 1000) {
+        val afterTimeout = DateTime.now() + timeout.milliseconds
+        while (!done) {
+            if (DateTime.now() >= afterTimeout) {
+                break
+            }
+        }
+        done = false
     }
 
     /**
@@ -44,13 +51,13 @@ class ReadConnectionListener() : IConnectionListener() {
                     }
                 }
             }
-            countDownLatch.countDown()
+            done = true
         } else {
             byte = null
             half = null
             word = null
             long = null
-            countDownLatch.countDown()
+            done = true
         }
     }
 }

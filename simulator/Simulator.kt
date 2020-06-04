@@ -13,11 +13,6 @@ import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
 import venusbackend.simulator.diffs.*
-import java.io.IOException
-import java.net.InetAddress
-import java.net.UnknownHostException
-import java.util.logging.Level
-import java.util.logging.Logger
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -48,7 +43,6 @@ class Simulator(
 
     val alloc: Alloc = Alloc(this)
 
-    var logger: Logger = Logger.getLogger(Simulator::class.java.toString())
     lateinit var connection: MotherboardConnection
 
     init {
@@ -213,16 +207,12 @@ class Simulator(
         }
         val connection = MotherboardConnection(propertyManager.startAddress, 0)
         try {
-            connection.establishConnection(InetAddress.getByName(propertyManager.hostname), propertyManager.port)
+            connection.establishConnection(propertyManager.hostname, propertyManager.port)
             if (!connection.isOn) {
-                connection.waitForMotherBoardPower()
+                throw SimulatorError("Please turn on the motherboard in order to use it")
             }
-        } catch (e: UnknownHostException) {
-            logger.log(Level.SEVERE,"Could not connect to host " + propertyManager.hostname, e)
-            throw SimulatorError()
-        } catch (e: IOException) {
-            logger.log(Level.SEVERE,"Could not connect to host " + propertyManager.hostname, e)
-            throw SimulatorError()
+        } catch (e: Exception) {
+            throw SimulatorError("Could not connect to host ${propertyManager.hostname} ${e.message}")
         }
         this.connection = connection
         this.state.mem = MemoryVMB(connection)

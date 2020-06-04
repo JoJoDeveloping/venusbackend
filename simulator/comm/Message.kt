@@ -1,8 +1,6 @@
 package venusbackend.simulator.comm
 
-import java.io.IOException
 import kotlin.experimental.and
-import kotlin.jvm.Throws
 
 class Message {
     private var type: Byte = 0
@@ -18,7 +16,7 @@ class Message {
     var address: Long = 0
     private val payload: ArrayList<Byte?> = ArrayList()
 
-    constructor(connection: MotherboardConnection) {
+    suspend fun setup(connection: MotherboardConnection) : Message {
         readHeader(connection)
         if (hasTimeStamp()) {
             readTimeStamp(connection)
@@ -29,35 +27,30 @@ class Message {
         if (hasPayload()) {
             readPayload(connection)
         }
+        return this
     }
 
-    constructor()
-
-    @Throws(IOException::class)
-    private fun readPayload(connection: MotherboardConnection) {
+    private suspend fun readPayload(connection: MotherboardConnection) {
         for (i in 0 until payloadSize()) {
             payload.add(connection.readByte())
         }
     }
 
-    @Throws(IOException::class)
-    private fun readAddress(connection: MotherboardConnection) {
+    private suspend fun readAddress(connection: MotherboardConnection) {
         address = 0
         for (i in 0..7) {
             address = (address shl 8) + (connection.readByte().toLong() and 0xffL)
         }
     }
 
-    @Throws(IOException::class)
-    private fun readTimeStamp(connection: MotherboardConnection) {
+    private suspend fun readTimeStamp(connection: MotherboardConnection) {
         timeStamp = 0
         for (i in 0..3) {
             timeStamp = (timeStamp shl 8) + connection.readByte()
         }
     }
 
-    @Throws(IOException::class)
-    private fun readHeader(connection: MotherboardConnection) {
+    private suspend fun readHeader(connection: MotherboardConnection) {
         type = connection.readByte()
         size = connection.readByte()
         slot = connection.readByte()

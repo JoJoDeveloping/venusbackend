@@ -1,41 +1,52 @@
 package venusbackend.simulator.comm.listeners
 
-import java.util.logging.Logger
+import com.soywiz.klogger.Logger
 
 class LoggingConnectionListener : IConnectionListener() {
-    protected var logger: Logger = Logger.getLogger(LoggingConnectionListener::class.java.toString())
+    var logger: Logger =  Logger("Logger Listener")
+
+    init {
+        logger.output = object : Logger.Output {
+            override fun output(logger: Logger, level: Logger.Level, msg: Any?) {
+                println("${logger.name}: $level: $msg")
+            }
+        }
+        logger.level = Logger.Level.INFO
+    }
 
     override fun dataReceived(offset: Int, payload: ByteArray?) {
-        logger.info("Data received: Offset = " + Integer.toHexString(offset)
-                .toString() + "   " + payload?.let { toHexString(it) })
+        logger.info {
+            "Data received: Offset = " + Integer.toHexString(offset)
+                    .toString() + "   " + payload?.let { toHexString(it) }
+        }
     }
 
     override fun interruptRequest(irqNumber: Int) {
-        logger.info("Irq $irqNumber")
+        logger.info { "Irq $irqNumber" }
     }
 
     override fun powerOff() {
-        logger.info("Power Off")
+        logger.info { "Power Off" }
     }
 
     override fun powerOn() {
-        logger.info("Power On")
+        logger.warn { "Power On" }
     }
 
     override fun readRequest() {
-        logger.info("Read")
+        logger.info { "Read" }
     }
 
     override fun reset() {
-        logger.info("Reset")
+        logger.info { "Reset" }
     }
 
     override fun writeRequest() {
-        logger.info("Write")
+        logger.info { "Write" }
     }
 
     override fun terminate() {
-        logger.info("Terminate")
+        logger.info { "Terminate" }
     }
 
     companion object {

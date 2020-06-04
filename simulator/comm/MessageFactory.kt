@@ -2,7 +2,6 @@ package venusbackend.simulator.comm
 
 import venusbackend.and
 import venusbackend.riscv.MemSize
-import venusbackend.shr
 import kotlin.experimental.or
 
 object MessageFactory {
