@@ -6,7 +6,7 @@ import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
 
-class MemoryVMB(private val connection : MotherboardConnection) : Memory {
+class MemoryVMB(private val connection: MotherboardConnection) : Memory {
 
     /**
      * It "removes" a byte by zero-ing it.
@@ -43,7 +43,6 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         connection.send(message)
     }
 
-
     override fun storeHalfWord(addr: Number, value: Number) {
         if (translate(addr) % MemSize.HALF.size != 0L) {
             throw AlignmentError()
@@ -74,7 +73,7 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
      * Dummy translate function for the future
      * TODO: Implement so that it really translates the address
      */
-    private fun translate(addr: Number) : Long {
+    private fun translate(addr: Number): Long {
         return addr.toLong() or 0x0000_0001_0000_0000 // and 0x0FFFFFFF or 0x100000000 //0000000100000000
     }
 
@@ -84,10 +83,10 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
      * @param address the address of the byte
      * @return the data at the given address
      */
-    private fun read(address: Number, size : MemSize) : Number {
+    private fun read(address: Number, size: MemSize): Number {
         val translatedAddress = translate(address)
-        var message : Message? = null
-        when(size) {
+        var message: Message? = null
+        when (size) {
             MemSize.BYTE -> message = MessageFactory.createReadByteMessage(translatedAddress)
             MemSize.HALF -> message = MessageFactory.createReadHalfMessage(translatedAddress)
             MemSize.WORD -> message = MessageFactory.createReadWordMessage(translatedAddress)
@@ -102,8 +101,8 @@ class MemoryVMB(private val connection : MotherboardConnection) : Memory {
         val listener = connection.getReadListener()
         connection.send(message)
         listener.waitForReadingResponse()
-        var tmp : Number? = null
-        when(size) {
+        var tmp: Number? = null
+        when (size) {
             MemSize.BYTE -> {
                 tmp = listener.byte
                 listener.byte = null

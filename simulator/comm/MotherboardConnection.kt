@@ -18,7 +18,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 class MotherboardConnection(private val startAddress: Long, private val size: Int) : IConnection {
     private val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
     private val readListener: ReadConnectionListener = ReadConnectionListener()
-    private var logger : Logger = Logger("MotherboardConnection Logger")
+    private var logger: Logger = Logger("MotherboardConnection Logger")
     var isOn: Boolean = false
     var clientAsynch: AsyncClient? = null
 
@@ -30,7 +30,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
         logger.level = Logger.Level.INFO
     }
-
 
     suspend fun connectToVMB(host: String, port: Int): Boolean {
         val client: AsyncClient
@@ -82,14 +81,12 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
     }
 
-
     override suspend fun readByte(): Byte {
         val r = clientAsynch!!.read()
         if (r < 0) {
-            throw ConnectionError("End of stream reached");
+            throw ConnectionError("End of stream reached")
         }
         return (r and 0xFF).toByte()
-
     }
 
     fun getReadListener(): ReadConnectionListener {
@@ -144,13 +141,11 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
     }
 
-
     private fun register() {
         launch(EmptyCoroutineContext) {
             clientAsynch!!.write(MessageFactory.createRegistrationMessage(startAddress, startAddress + size, -1L, "RISC-V CPU").toByteArray())
         }
     }
-
 
     fun send(message: Message) {
         if (isOn) {
@@ -169,7 +164,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
             connectionListeners.add(listener)
         }
     }
-
 
     override suspend fun shutDown() {
         clientAsynch!!.close()

@@ -3,7 +3,7 @@ package venusbackend.simulator.comm.listeners
 import com.soywiz.klogger.Logger
 
 class LoggingConnectionListener : IConnectionListener() {
-    var logger: Logger =  Logger("Logger Listener")
+    var logger: Logger = Logger("Logger Listener")
 
     init {
         logger.output = object : Logger.Output {
@@ -16,8 +16,7 @@ class LoggingConnectionListener : IConnectionListener() {
 
     override fun dataReceived(offset: Int, payload: ByteArray?) {
         logger.info {
-            "Data received: Offset = " + Integer.toHexString(offset)
-                    .toString() + "   " + payload?.let { toHexString(it) }
+            "Data received: Offset = " + toHexString(byteArrayOf(offset.toByte())) + "   " + payload?.let { toHexString(it) }
         }
     }
 

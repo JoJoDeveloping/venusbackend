@@ -16,7 +16,7 @@ class Message {
     var address: Long = 0
     private val payload: ArrayList<Byte?> = ArrayList()
 
-    suspend fun setup(connection: MotherboardConnection) : Message {
+    suspend fun setup(connection: MotherboardConnection): Message {
         readHeader(connection)
         if (hasTimeStamp()) {
             readTimeStamp(connection)
