@@ -13,7 +13,7 @@ class ReadConnectionListener : IConnectionListener() {
     var done: Boolean = false
 
     fun waitForReadingResponse(timeout: Long = 1000) {
-        val afterTimeout = DateTime.now() + timeout.milliseconds
+        val afterTimeout = DateTime.now() + timeout.toDouble().milliseconds
         while (!done) {
             if (DateTime.now() >= afterTimeout) {
                 break

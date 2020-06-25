@@ -7,7 +7,7 @@ class PropertyManager() {
     /**
      * @param port the port to set
      */
-    var port = 9002
+    var port = 9003
     /**
      * @return the hostName
      */

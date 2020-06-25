@@ -16,7 +16,7 @@ class Message {
     var address: Long = 0
     private val payload: ArrayList<Byte?> = ArrayList()
 
-    suspend fun setup(connection: MotherboardConnection): Message {
+    /*suspend fun setup(connection: MotherboardConnection): Message {
         readHeader(connection)
         if (hasTimeStamp()) {
             readTimeStamp(connection)
@@ -28,34 +28,54 @@ class Message {
             readPayload(connection)
         }
         return this
-    }
+    }*/
 
-    private suspend fun readPayload(connection: MotherboardConnection) {
+    /*private suspend fun readPayload(connection: MotherboardConnection) {
         for (i in 0 until payloadSize()) {
             payload.add(connection.readByte())
         }
+    }*/
+
+    fun readPayloadFromArray(array: ByteArray) {
+        for (i in 0 until payloadSize()) {
+            payload.add(array[i])
+        }
     }
 
-    private suspend fun readAddress(connection: MotherboardConnection) {
+    /*private suspend fun readAddress(connection: MotherboardConnection) {
         address = 0
         for (i in 0..7) {
             address = (address shl 8) + (connection.readByte().toLong() and 0xffL)
         }
+    }*/
+
+    fun readAddressFromByte(nextByte: Byte) {
+        address = 0
+        for (i in 0..7) {
+            address = (address shl 8) + (nextByte.toLong() and 0xffL)
+        }
     }
 
-    private suspend fun readTimeStamp(connection: MotherboardConnection) {
+    /*private suspend fun readTimeStamp(connection: MotherboardConnection) {
         timeStamp = 0
         for (i in 0..3) {
             timeStamp = (timeStamp shl 8) + connection.readByte()
         }
+    }*/
+
+    fun readTimeStampFromByte(bytes: ByteArray) {
+        timeStamp = 0
+        for (i in 0..3) {
+            timeStamp = (timeStamp shl 8) + bytes[i]
+        }
     }
 
-    private suspend fun readHeader(connection: MotherboardConnection) {
+    /*private suspend fun readHeader(connection: MotherboardConnection) {
         type = connection.readByte()
         size = connection.readByte()
         slot = connection.readByte()
         id = connection.readByte()
-    }
+    }*/
 
     val isBusMessage: Boolean
         get() = type and TYPE_BUS != 0.toByte()

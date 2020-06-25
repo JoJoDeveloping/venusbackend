@@ -4,10 +4,11 @@ import com.soywiz.klock.DateTime
 import com.soywiz.klock.TimeSpan
 import com.soywiz.klock.milliseconds
 import com.soywiz.korio.async.launch
-import com.soywiz.korio.net.AsyncClient
-import com.soywiz.korio.net.createTcpClient
 import com.soywiz.klogger.Logger
 import com.soywiz.korio.async.delay
+import com.soywiz.korio.net.ws.WebSocketClient
+import com.soywiz.korio.net.ws.readString
+import com.soywiz.korio.util.encoding.Base64
 import venusbackend.simulator.ConnectionError
 import venusbackend.simulator.SimulatorError
 import venusbackend.simulator.comm.listeners.IConnectionListener
@@ -20,7 +21,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     private val readListener: ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger("MotherboardConnection Logger")
     var isOn: Boolean = false
-    var clientAsynch: AsyncClient? = null
+    var webSocketClient: WebSocketClient? = null
 
     init {
         logger.output = object : Logger.Output {
@@ -32,21 +33,22 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     }
 
     suspend fun connectToVMB(host: String, port: Int): Boolean {
-        val client: AsyncClient
         try {
-            client = createTcpClient(host, port, false)
+            webSocketClient = WebSocketClient("ws://$host:$port")
+            val message = "{\"command\": \"connect\", \"host\": \"127.0.0.1\", \"port\":9002}"
+            webSocketClient!!.send(message)
+            val response = webSocketClient!!.readString()
+            val regex = Regex("\"success\": true")
+            return regex.containsMatchIn(response)
         } catch (e: Exception) {
-            println(e.message)
+            logger.fatal { e.message }
             return false
         }
-        clientAsynch = client
-        return true
     }
 
     private fun busyWait(timeout: Long = 1000, functionToBeExecuted: suspend () -> Unit) {
         var done = false
-        val afterTimeout = DateTime.now() + timeout.milliseconds
-
+        val afterTimeout = DateTime.now() + timeout.toDouble().milliseconds
         launch(EmptyCoroutineContext) {
             functionToBeExecuted()
         }.invokeOnCompletion {
@@ -60,14 +62,13 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     }
 
     override fun establishConnection(host: String, port: Int) {
+        var isConnected = false
         busyWait {
-            connectToVMB(host, port)
+            isConnected = connectToVMB(host, port)
         }
-
-        if (clientAsynch == null || !clientAsynch!!.connected) {
+        if (!isConnected) {
             throw ConnectionError("Could not connect to the motherboard!")
         }
-
         connectionListeners.add(readListener)
         connectionListeners.add(LoggingConnectionListener())
 
@@ -76,32 +77,72 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
         register()
         // Wait for 30 milliseconds so that the motherboard has time to send the power on/off signal
-        busyWait {
-            delay(TimeSpan(30.0))
+        busyWait(100) {
+            delay(TimeSpan(100.0))
         }
     }
 
-    override suspend fun readByte(): Byte {
+    /*override suspend fun readByte(): Byte {
         val r = clientAsynch!!.read()
         if (r < 0) {
             throw ConnectionError("End of stream reached")
         }
         return (r and 0xFF).toByte()
-    }
+    }*/
 
     fun getReadListener(): ReadConnectionListener {
         return readListener
     }
 
     suspend fun watchForMessages() {
-        while (clientAsynch!!.connected) {
+        while (true) {
             try {
-                dispatchMessage(Message().setup(this@MotherboardConnection))
+                val rcv = webSocketClient!!.readString()
+                val successRegex = Regex("\"success\": true")
+                val dataRegex = Regex("\"recv data\"")
+                if (successRegex.containsMatchIn(rcv) && dataRegex.containsMatchIn(rcv)) {
+                    var tmp = rcv.replace(Regex("\\{.*\"data\": "), "")
+                    tmp = tmp.replace("\"", "")
+                    tmp = tmp.replace("}", "")
+                    val payload = Base64.decode(tmp)
+                    val message = Message()
+                    message.setType(payload[0])
+                    message.size = payload[1]
+                    message.slot = payload[2]
+                    message.id = payload[3]
+                    if (message.hasTimeStamp()) {
+                        message.readTimeStampFromByte(copyOfRange(4, 8, payload))
+                    }
+                    if (!message.hasTimeStamp() && message.hasAddress()) {
+                        message.readAddressFromByte(payload[4])
+                    }
+                    if (message.hasTimeStamp() && message.hasAddress()) {
+                        message.readAddressFromByte(payload[5])
+                    }
+                    if (message.hasPayload() && !message.hasTimeStamp()) {
+                        message.readPayloadFromArray(copyOfRange(12, payload.size - 1, payload))
+                    } else if (message.hasPayload() && message.hasTimeStamp()) {
+                        message.readPayloadFromArray(copyOfRange(16, payload.size - 1, payload))
+                    }
+                    dispatchMessage(message)
+                }
             } catch (e: Exception) {
                 println(e.message)
                 return
             }
         }
+    }
+
+    fun copyOfRange(begin: Int, end: Int, array: ByteArray): ByteArray {
+        var result: ByteArray = byteArrayOf()
+        if (begin < 0 || end >= array.size) {
+            return result
+        }
+        result = ByteArray(end - begin + 1)
+        for ((i, x) in (begin..end).withIndex()) {
+            result[i] = array[x]
+        }
+        return result
     }
 
     /*
@@ -142,15 +183,22 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     }
 
     private fun register() {
-        launch(EmptyCoroutineContext) {
-            clientAsynch!!.write(MessageFactory.createRegistrationMessage(startAddress, startAddress + size, -1L, "RISC-V CPU").toByteArray())
-        }
+        send(MessageFactory.createRegistrationMessage(startAddress, startAddress + size, -1L, "RISC-V CPU"), true)
     }
 
-    fun send(message: Message) {
-        if (isOn) {
+    fun send(message: Message, register: Boolean = false) {
+        if (isOn || register) {
+            val reg = message.toByteArray()
+            val base64Message = Base64.encode(message.toByteArray())
+            var mess = ""
+            for (i in reg.indices) {
+                mess += reg[i].toUByte()
+                if (i != reg.size - 1) {
+                    mess += ";"
+                }
+            }
             launch(EmptyCoroutineContext) {
-                clientAsynch!!.write(message.toByteArray())
+                webSocketClient!!.send("{\"command\": \"sendb\", \"data\": \"$base64Message\"}")
             }
         } else {
             throw SimulatorError("The motherboard is not on !")
@@ -166,6 +214,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     }
 
     override suspend fun shutDown() {
-        clientAsynch!!.close()
+        webSocketClient!!.close()
     }
 }
