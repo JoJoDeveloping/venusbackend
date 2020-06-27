@@ -7,8 +7,9 @@ import com.soywiz.korio.async.launch
 import com.soywiz.klogger.Logger
 import com.soywiz.korio.async.delay
 import com.soywiz.korio.net.ws.WebSocketClient
-import com.soywiz.korio.net.ws.readString
+import com.soywiz.korio.net.ws.readBinary
 import com.soywiz.korio.util.encoding.Base64
+import venusbackend.and
 import venusbackend.simulator.ConnectionError
 import venusbackend.simulator.SimulatorError
 import venusbackend.simulator.comm.listeners.IConnectionListener
@@ -32,17 +33,13 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         logger.level = Logger.Level.INFO
     }
 
-    suspend fun connectToVMB(host: String, port: Int): Boolean {
-        try {
+    private suspend fun connectToVMB(host: String, port: Int): Boolean {
+        return try {
             webSocketClient = WebSocketClient("ws://$host:$port")
-            val message = "{\"command\": \"connect\", \"host\": \"127.0.0.1\", \"port\":9002}"
-            webSocketClient!!.send(message)
-            val response = webSocketClient!!.readString()
-            val regex = Regex("\"success\": true")
-            return regex.containsMatchIn(response)
+            true
         } catch (e: Exception) {
             logger.fatal { e.message }
-            return false
+            false
         }
     }
 
@@ -77,57 +74,49 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
         register()
         // Wait for 30 milliseconds so that the motherboard has time to send the power on/off signal
-        busyWait(100) {
-            delay(TimeSpan(100.0))
+        busyWait(1000) {
+            delay(TimeSpan(999.0))
         }
     }
 
     /*override suspend fun readByte(): Byte {
-        val r = clientAsynch!!.read()
-        if (r < 0) {
-            throw ConnectionError("End of stream reached")
-        }
-        return (r and 0xFF).toByte()
+        val r = webSocketClient!!.readBinary()
+        println("Read: ${r[0].toUByte()}")
+        return (r[0] and 0xFF).toByte()
     }*/
 
     fun getReadListener(): ReadConnectionListener {
         return readListener
     }
 
-    suspend fun watchForMessages() {
+    private suspend fun watchForMessages() {
         while (true) {
             try {
-                val rcv = webSocketClient!!.readString()
-                val successRegex = Regex("\"success\": true")
-                val dataRegex = Regex("\"recv data\"")
-                if (successRegex.containsMatchIn(rcv) && dataRegex.containsMatchIn(rcv)) {
-                    var tmp = rcv.replace(Regex("\\{.*\"data\": "), "")
-                    tmp = tmp.replace("\"", "")
-                    tmp = tmp.replace("}", "")
-                    val payload = Base64.decode(tmp)
-                    val message = Message()
-                    message.setType(payload[0])
-                    message.size = payload[1]
-                    message.slot = payload[2]
-                    message.id = payload[3]
-                    if (message.hasTimeStamp()) {
-                        message.readTimeStampFromByte(copyOfRange(4, 8, payload))
-                    }
-                    if (!message.hasTimeStamp() && message.hasAddress()) {
-                        message.readAddressFromByte(payload[4])
-                    }
-                    if (message.hasTimeStamp() && message.hasAddress()) {
-                        message.readAddressFromByte(payload[5])
-                    }
-                    if (message.hasPayload() && !message.hasTimeStamp()) {
-                        message.readPayloadFromArray(copyOfRange(12, payload.size - 1, payload))
-                    } else if (message.hasPayload() && message.hasTimeStamp()) {
-                        message.readPayloadFromArray(copyOfRange(16, payload.size - 1, payload))
-                    }
-                    dispatchMessage(message)
+                val payload = webSocketClient!!.readBinary()
+                val message = Message()
+                message.setType(payload[0])
+                message.size = payload[1]
+                message.slot = payload[2]
+                message.id = payload[3]
+                if (message.hasTimeStamp()) {
+                    message.readTimeStampFromByte(copyOfRange(4, 8, payload))
                 }
+                if (!message.hasTimeStamp() && message.hasAddress()) {
+                    message.readAddressFromByte(payload[4])
+                }
+                if (message.hasTimeStamp() && message.hasAddress()) {
+                    message.readAddressFromByte(payload[5])
+                }
+                if (message.hasPayload() && !message.hasTimeStamp()) {
+                    message.readPayloadFromArray(copyOfRange(12, payload.size - 1, payload))
+                } else if (message.hasPayload() && message.hasTimeStamp()) {
+                    message.readPayloadFromArray(copyOfRange(16, payload.size - 1, payload))
+                }
+                dispatchMessage(message)
             } catch (e: Exception) {
-                println(e.message)
+                logger.fatal {
+                    e.message
+                }
                 return
             }
         }
@@ -198,7 +187,8 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                 }
             }
             launch(EmptyCoroutineContext) {
-                webSocketClient!!.send("{\"command\": \"sendb\", \"data\": \"$base64Message\"}")
+                //webSocketClient!!.send("{\"command\": \"sendb\", \"data\": \"$base64Message\"}")
+                webSocketClient!!.send(message.toByteArray())
             }
         } else {
             throw SimulatorError("The motherboard is not on !")
