@@ -79,12 +79,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
     }
 
-    /*override suspend fun readByte(): Byte {
-        val r = webSocketClient!!.readBinary()
-        println("Read: ${r[0].toUByte()}")
-        return (r[0] and 0xFF).toByte()
-    }*/
-
     fun getReadListener(): ReadConnectionListener {
         return readListener
     }
@@ -93,25 +87,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         while (true) {
             try {
                 val payload = webSocketClient!!.readBinary()
-                val message = Message()
-                message.setType(payload[0])
-                message.size = payload[1]
-                message.slot = payload[2]
-                message.id = payload[3]
-                if (message.hasTimeStamp()) {
-                    message.readTimeStampFromByte(copyOfRange(4, 8, payload))
-                }
-                if (!message.hasTimeStamp() && message.hasAddress()) {
-                    message.readAddressFromByte(payload[4])
-                }
-                if (message.hasTimeStamp() && message.hasAddress()) {
-                    message.readAddressFromByte(payload[5])
-                }
-                if (message.hasPayload() && !message.hasTimeStamp()) {
-                    message.readPayloadFromArray(copyOfRange(12, payload.size - 1, payload))
-                } else if (message.hasPayload() && message.hasTimeStamp()) {
-                    message.readPayloadFromArray(copyOfRange(16, payload.size - 1, payload))
-                }
+                val message = Message().setup(payload)
                 dispatchMessage(message)
             } catch (e: Exception) {
                 logger.fatal {
@@ -120,18 +96,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                 return
             }
         }
-    }
-
-    fun copyOfRange(begin: Int, end: Int, array: ByteArray): ByteArray {
-        var result: ByteArray = byteArrayOf()
-        if (begin < 0 || end >= array.size) {
-            return result
-        }
-        result = ByteArray(end - begin + 1)
-        for ((i, x) in (begin..end).withIndex()) {
-            result[i] = array[x]
-        }
-        return result
     }
 
     /*

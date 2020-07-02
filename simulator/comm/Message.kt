@@ -16,66 +16,61 @@ class Message {
     var address: Long = 0
     private val payload: ArrayList<Byte?> = ArrayList()
 
-    /*suspend fun setup(connection: MotherboardConnection): Message {
-        readHeader(connection)
+    fun setup(payload: ByteArray): Message {
+        type = payload[0]
+        size = payload[1]
+        slot = payload[2]
+        id = payload[3]
         if (hasTimeStamp()) {
-            readTimeStamp(connection)
+            readTimeStampFromByte(copyOfRange(4, 8, payload))
         }
-        if (hasAddress()) {
-            readAddress(connection)
+        if (!hasTimeStamp() && hasAddress()) {
+            readAddressFromByte(copyOfRange(4, 11, payload))
         }
-        if (hasPayload()) {
-            readPayload(connection)
+        if (hasTimeStamp() && hasAddress()) {
+            readAddressFromByte(copyOfRange(5, 12, payload))
+        }
+        if (hasPayload() && !hasTimeStamp() && !hasAddress()) {
+            readPayloadFromArray(copyOfRange(4, payload.size - 1, payload))
+        } else if (hasPayload() && !hasTimeStamp() && hasAddress()) {
+            readPayloadFromArray(copyOfRange(12, payload.size - 1, payload))
+        } else if (hasPayload() && hasTimeStamp() && hasAddress()) {
+            readPayloadFromArray(copyOfRange(16, payload.size - 1, payload))
         }
         return this
-    }*/
+    }
 
-    /*private suspend fun readPayload(connection: MotherboardConnection) {
-        for (i in 0 until payloadSize()) {
-            payload.add(connection.readByte())
+    private fun copyOfRange(begin: Int, end: Int, array: ByteArray): ByteArray {
+        var result: ByteArray = byteArrayOf()
+        if (begin < 0 || end >= array.size) {
+            return result
         }
-    }*/
+        result = ByteArray(end - begin + 1)
+        for ((i, x) in (begin..end).withIndex()) {
+            result[i] = array[x]
+        }
+        return result
+    }
 
-    fun readPayloadFromArray(array: ByteArray) {
+    private fun readPayloadFromArray(array: ByteArray) {
         for (i in 0 until payloadSize()) {
             payload.add(array[i])
         }
     }
 
-    /*private suspend fun readAddress(connection: MotherboardConnection) {
+    private fun readAddressFromByte(bytes: ByteArray) {
         address = 0
         for (i in 0..7) {
-            address = (address shl 8) + (connection.readByte().toLong() and 0xffL)
-        }
-    }*/
-
-    fun readAddressFromByte(nextByte: Byte) {
-        address = 0
-        for (i in 0..7) {
-            address = (address shl 8) + (nextByte.toLong() and 0xffL)
+            address = (address shl 8) + (bytes[i].toLong() and 0xffL)
         }
     }
 
-    /*private suspend fun readTimeStamp(connection: MotherboardConnection) {
-        timeStamp = 0
-        for (i in 0..3) {
-            timeStamp = (timeStamp shl 8) + connection.readByte()
-        }
-    }*/
-
-    fun readTimeStampFromByte(bytes: ByteArray) {
+    private fun readTimeStampFromByte(bytes: ByteArray) {
         timeStamp = 0
         for (i in 0..3) {
             timeStamp = (timeStamp shl 8) + bytes[i]
         }
     }
-
-    /*private suspend fun readHeader(connection: MotherboardConnection) {
-        type = connection.readByte()
-        size = connection.readByte()
-        slot = connection.readByte()
-        id = connection.readByte()
-    }*/
 
     val isBusMessage: Boolean
         get() = type and TYPE_BUS != 0.toByte()
@@ -92,7 +87,7 @@ class Message {
         return type and TYPE_ROUTE != 0.toByte()
     }
 
-    fun hasPayload(): Boolean {
+    private fun hasPayload(): Boolean {
         return type and TYPE_PAYLOAD != 0.toByte()
     }
 
@@ -142,7 +137,7 @@ class Message {
         return m
     }
 
-    fun payloadSize(): Int {
+    private fun payloadSize(): Int {
         return (size + 1) * 8
     }
 
