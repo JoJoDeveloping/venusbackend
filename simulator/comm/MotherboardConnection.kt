@@ -9,7 +9,6 @@ import com.soywiz.korio.async.delay
 import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
 import com.soywiz.korio.util.encoding.Base64
-import venusbackend.and
 import venusbackend.simulator.ConnectionError
 import venusbackend.simulator.SimulatorError
 import venusbackend.simulator.comm.listeners.IConnectionListener
@@ -151,7 +150,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                 }
             }
             launch(EmptyCoroutineContext) {
-                //webSocketClient!!.send("{\"command\": \"sendb\", \"data\": \"$base64Message\"}")
                 webSocketClient!!.send(message.toByteArray())
             }
         } else {
