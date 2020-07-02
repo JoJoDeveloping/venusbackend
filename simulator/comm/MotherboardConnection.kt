@@ -74,8 +74,8 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
         register()
         // Wait for 30 milliseconds so that the motherboard has time to send the power on/off signal
-        busyWait(1000) {
-            delay(TimeSpan(999.0))
+        busyWait(100) {
+            delay(TimeSpan(99.0))
         }
     }
 
