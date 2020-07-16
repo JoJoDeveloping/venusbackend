@@ -1,7 +1,5 @@
 package venusbackend.simulator.comm.listeners
 
-import com.soywiz.klock.TimeSpan
-import com.soywiz.korio.async.delay
 import venusbackend.and
 import venusbackend.simulator.comm.Message
 
@@ -23,7 +21,6 @@ class ReadConnectionListener : IConnectionListener() {
             when (message.id) {
                 Message.ID_BYTEREPLY -> {
                     byte = (message.getPayload()[0] and 0xFF).toInt()
-
                 }
                 Message.ID_WYDEREPLY -> half = ((message.getPayload()[1] and 0xFF).toInt() shl 8) or (message.getPayload()[0] and 0xFF).toInt()
                 Message.ID_TETRAREPLY -> {

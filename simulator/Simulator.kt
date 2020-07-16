@@ -17,7 +17,6 @@ import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
 import venusbackend.simulator.diffs.*
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */

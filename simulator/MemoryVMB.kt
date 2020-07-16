@@ -115,9 +115,9 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         launch(connection.context) {
             connection.send(message)
         }
-        var payload : ByteArray = byteArrayOf()
+        var payload: ByteArray = byteArrayOf()
         try {
-            withTimeout(TimeSpan(100.0)) {
+            withTimeout(TimeSpan(1000.0)) {
                 payload = connection.webSocketClient!!.readBinary()
             }
         } catch (e: Exception) {
