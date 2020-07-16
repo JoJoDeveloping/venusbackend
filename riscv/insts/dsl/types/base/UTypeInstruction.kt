@@ -11,10 +11,10 @@ import venusbackend.simulator.Simulator
 class UTypeInstruction(
     name: String,
     opcode: Int,
-    impl16: (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv16") },
-    impl32: (MachineCode, Simulator) -> Unit,
-    impl64: (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv64") },
-    impl128: (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv128") }
+    impl16: suspend (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv16") },
+    impl32: suspend (MachineCode, Simulator) -> Unit,
+    impl64: suspend (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv64") },
+    impl128: suspend (MachineCode, Simulator) -> Unit = { _, _ -> throw NotImplementedError("no rv128") }
 ) : Instruction(
         name = name,
         format = UTypeFormat(opcode),

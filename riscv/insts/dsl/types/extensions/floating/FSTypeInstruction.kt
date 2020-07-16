@@ -13,7 +13,7 @@ class FSTypeInstruction(
     name: String,
     opcode: Int,
     funct3: Int,
-    store32: (Simulator, Int, Decimal) -> Unit
+    store32: suspend (Simulator, Int, Decimal) -> Unit
 ) : Instruction(
         name = name,
         format = STypeFormat(opcode, funct3),

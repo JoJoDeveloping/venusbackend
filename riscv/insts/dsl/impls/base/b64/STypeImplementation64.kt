@@ -7,8 +7,8 @@ import venusbackend.riscv.insts.dsl.impls.setBitslice
 import venusbackend.riscv.insts.dsl.impls.signExtend
 import venusbackend.simulator.Simulator
 
-class STypeImplementation64(private val store: (Simulator, Long, Long) -> Unit) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+class STypeImplementation64(private val store: suspend (Simulator, Long, Long) -> Unit) : InstructionImplementation {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val rs2 = mcode[InstructionField.RS2].toInt()
         val imm = constructStoreImmediate64(mcode)

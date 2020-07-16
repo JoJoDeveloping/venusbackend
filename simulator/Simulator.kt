@@ -2,6 +2,10 @@ package venusbackend.simulator
 
 /* ktlint-disable no-wildcard-imports */
 
+import com.soywiz.klock.TimeSpan
+import com.soywiz.korio.async.delay
+import com.soywiz.korio.async.launch
+import kotlinx.coroutines.Dispatchers
 import venus.Renderer
 import venus.vfs.VirtualFileSystem
 import venusbackend.*
@@ -13,6 +17,7 @@ import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
 import venusbackend.simulator.diffs.*
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -24,7 +29,8 @@ class Simulator(
     val VFS: VirtualFileSystem = VirtualFileSystem("dummy"),
     var settings: SimulatorSettings = SimulatorSettings(),
     val state: SimulatorState = SimulatorState32(),
-    val simulatorID: Int = 0
+    val simulatorID: Int = 0,
+    val connection: MotherboardConnection? = null
 ) {
 
     private var cycles = 0
@@ -43,9 +49,13 @@ class Simulator(
 
     val alloc: Alloc = Alloc(this)
 
-    lateinit var connection: MotherboardConnection
+    var connectionToVMB: MotherboardConnection? = null
 
     init {
+        if (this.connection != null) {
+            this.connectionToVMB = this.connection
+            this.state.mem = MemoryVMB(connection)
+        }
         (state).getReg(1)
         var i = 0
         for (inst in linkedProgram.prog.insts) {
@@ -114,13 +124,13 @@ class Simulator(
         state.mem = mem
     }
 
-    fun run() {
+    suspend fun run() {
         while (!isDone()) {
             step()
         }
     }
 
-    fun runToBreakpoint() {
+    suspend fun runToBreakpoint() {
         if (!isDone()) {
             // We need to step past a breakpoint.
             step()
@@ -130,7 +140,7 @@ class Simulator(
         }
     }
 
-    fun step(): List<Diff> {
+    suspend fun step(): List<Diff> {
         if (settings.maxSteps >= 0 && cycles >= settings.maxSteps) {
             throw ExceededAllowedCyclesError("Ran for more than the max allowed steps (${settings.maxSteps})!")
         }
@@ -191,7 +201,7 @@ class Simulator(
         this.args.removeAll(this.args)
     }
 
-    fun removeArg(index: Int) {
+    suspend fun removeArg(index: Int) {
         if (index in 0 until this.args.size) {
             this.args.removeAt(index)
             this.removeAllArgsFromMem()
@@ -199,7 +209,7 @@ class Simulator(
         }
     }
 
-    fun connectToMotherboard(host: String? = null, port: Int? = null) {
+    suspend fun connectToMotherboard(host: String? = null, port: Int? = null) {
         val propertyManager = PropertyManager()
         if (host != null && port != null) {
             propertyManager.hostname = host
@@ -208,29 +218,33 @@ class Simulator(
         val connection = MotherboardConnection(propertyManager.startAddress, 0)
         try {
             connection.establishConnection(propertyManager.hostname, propertyManager.port)
+            launch(Dispatchers.Default) {
+                connection.watchForMessages()
+            }
+            delay(TimeSpan(100.0)) // wait for the power on signal from the motherboard
             if (!connection.isOn) {
                 throw SimulatorError("Please turn on the motherboard in order to use it")
             }
         } catch (e: Exception) {
             throw SimulatorError("Could not connect to host ${propertyManager.hostname} ${e.message}")
         }
-        this.connection = connection
+        this.connectionToVMB = connection
         this.state.mem = MemoryVMB(connection)
     }
 
-    fun addArg(arg: String) {
+    suspend fun addArg(arg: String) {
         args.add(arg)
         removeAllArgsFromMem()
         addArgsToMem()
     }
 
-    fun addArg(newargs: List<String>) {
+    suspend fun addArg(newargs: List<String>) {
         args.addAll(newargs)
         removeAllArgsFromMem()
         addArgsToMem()
     }
 
-    fun addArgsToMem() {
+    suspend fun addArgsToMem() {
         val registerSize = state.registerWidth / 8
         val intSize = 4
         if (!settings.setRegesOnInit) {
@@ -285,7 +299,7 @@ class Simulator(
     var ecallMsg = ""
     var branched = false
     var jumped = false
-    fun reset(keep_args: Boolean = false) {
+    suspend fun reset(keep_args: Boolean = false) {
         while (this.canUndo()) {
             this.undo()
         }
@@ -386,8 +400,8 @@ class Simulator(
         }
     }
 
-    fun loadByte(addr: Number): Int = state.mem.loadByte(addr)
-    fun loadBytewCache(addr: Number): Int {
+    suspend fun loadByte(addr: Number): Int = state.mem.loadByte(addr)
+    suspend fun loadBytewCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.BYTE.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not BYTE aligned!")
         }
@@ -398,8 +412,8 @@ class Simulator(
         return this.loadByte(addr)
     }
 
-    fun loadHalfWord(addr: Number): Int = state.mem.loadHalfWord(addr)
-    fun loadHalfWordwCache(addr: Number): Int {
+    suspend fun loadHalfWord(addr: Number): Int = state.mem.loadHalfWord(addr)
+    suspend fun loadHalfWordwCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.HALF.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not HALF WORD aligned!")
         }
@@ -410,8 +424,8 @@ class Simulator(
         return this.loadHalfWord(addr)
     }
 
-    fun loadWord(addr: Number): Int = state.mem.loadWord(addr)
-    fun loadWordwCache(addr: Number): Int {
+    suspend fun loadWord(addr: Number): Int = state.mem.loadWord(addr)
+    suspend fun loadWordwCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.WORD.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not WORD aligned!")
         }
@@ -422,8 +436,8 @@ class Simulator(
         return this.loadWord(addr)
     }
 
-    fun loadLong(addr: Number): Long = state.mem.loadLong(addr)
-    fun loadLongwCache(addr: Number): Long {
+    suspend fun loadLong(addr: Number): Long = state.mem.loadLong(addr)
+    suspend fun loadLongwCache(addr: Number): Long {
         if (this.settings.alignedAddress && addr % MemSize.LONG.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not LONG aligned!")
         }
@@ -434,13 +448,13 @@ class Simulator(
         return this.loadLong(addr)
     }
 
-    fun storeByte(addr: Number, value: Number) {
+    suspend fun storeByte(addr: Number, value: Number) {
         preInstruction.add(MemoryDiff(addr, loadWord(addr)))
         state.mem.storeByte(addr, value)
         postInstruction.add(MemoryDiff(addr, loadWord(addr)))
         this.storeTextOverrideCheck(addr, value, MemSize.BYTE)
     }
-    fun storeBytewCache(addr: Number, value: Number) {
+    suspend fun storeBytewCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.BYTE.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not BYTE aligned!")
         }
@@ -455,13 +469,13 @@ class Simulator(
         postInstruction.add(CacheDiff(Address(addr, MemSize.BYTE)))
     }
 
-    fun storeHalfWord(addr: Number, value: Number) {
+    suspend fun storeHalfWord(addr: Number, value: Number) {
         preInstruction.add(MemoryDiff(addr, loadWord(addr)))
         state.mem.storeHalfWord(addr, value)
         postInstruction.add(MemoryDiff(addr, loadWord(addr)))
         this.storeTextOverrideCheck(addr, value, MemSize.HALF)
     }
-    fun storeHalfWordwCache(addr: Number, value: Number) {
+    suspend fun storeHalfWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.HALF.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not HALF WORD aligned!")
         }
@@ -475,13 +489,13 @@ class Simulator(
         postInstruction.add(CacheDiff(Address(addr, MemSize.HALF)))
     }
 
-    fun storeWord(addr: Number, value: Number) {
+    suspend fun storeWord(addr: Number, value: Number) {
         preInstruction.add(MemoryDiff(addr, loadWord(addr)))
         state.mem.storeWord(addr, value)
         postInstruction.add(MemoryDiff(addr, loadWord(addr)))
         this.storeTextOverrideCheck(addr, value, MemSize.WORD)
     }
-    fun storeWordwCache(addr: Number, value: Number) {
+    suspend fun storeWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.WORD.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not WORD aligned!")
         }
@@ -495,13 +509,13 @@ class Simulator(
         postInstruction.add(CacheDiff(Address(addr, MemSize.WORD)))
     }
 
-    fun storeLong(addr: Number, value: Number) {
+    suspend fun storeLong(addr: Number, value: Number) {
         preInstruction.add(MemoryDiff(addr, loadLong(addr)))
         state.mem.storeLong(addr, value)
         postInstruction.add(MemoryDiff(addr, loadLong(addr)))
         this.storeTextOverrideCheck(addr, value, MemSize.LONG)
     }
-    fun storeLongwCache(addr: Number, value: Number) {
+    suspend fun storeLongwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.LONG.size != 0) {
             throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not long aligned!")
         }
@@ -515,7 +529,7 @@ class Simulator(
         postInstruction.add(CacheDiff(Address(addr, MemSize.LONG)))
     }
 
-    fun storeTextOverrideCheck(addr: Number, value: Number, size: MemSize) {
+    suspend fun storeTextOverrideCheck(addr: Number, value: Number, size: MemSize) {
         /*Here, we will check if we are writing to memory*/
         if (addr in (MemorySegments.TEXT_BEGIN until state.getMaxPC().toInt()) || (addr + size.size - MemSize.BYTE.size) in (MemorySegments.TEXT_BEGIN until state.getMaxPC().toInt())) {
             try {
@@ -560,7 +574,7 @@ class Simulator(
         }
     }
 
-    fun getNextInstruction(): MachineCode {
+    suspend fun getNextInstruction(): MachineCode {
         val pc = getPC()
         var instruction: ULong = loadHalfWord(pc).toULong()
         val length = getInstructionLength(instruction.toInt())
@@ -574,7 +588,7 @@ class Simulator(
         return mcode
     }
 
-    fun memcpy(destaddr: Int, srcaddr: Int, size: Int): Int {
+    suspend fun memcpy(destaddr: Int, srcaddr: Int, size: Int): Int {
         var dest = destaddr
         var src = srcaddr
         var s = size
@@ -587,7 +601,7 @@ class Simulator(
         return destaddr
     }
 
-    fun memset(destaddr: Int, item: Int, size: Int): Int {
+    suspend fun memset(destaddr: Int, item: Int, size: Int): Int {
         var dest = destaddr
         var s = size
         while (s > 0) {

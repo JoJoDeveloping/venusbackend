@@ -10,8 +10,8 @@ import venusbackend.simulator.Simulator
 /**
  * Created by thaum on 8/6/2018.
  */
-class FITypeImplementation32(private val eval: (Int, Simulator) -> Decimal) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+class FITypeImplementation32(private val eval: suspend (Int, Simulator) -> Decimal) : InstructionImplementation {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val rd = mcode[InstructionField.RD].toInt()
         val vrs1 = sim.getReg(rs1).toInt()

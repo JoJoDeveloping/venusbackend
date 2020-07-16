@@ -1,16 +1,8 @@
 package venusbackend.simulator.comm
 
-import com.soywiz.klock.DateTime
-import com.soywiz.klock.TimeSpan
-import com.soywiz.klock.milliseconds
-import com.soywiz.korio.async.launch
 import com.soywiz.klogger.Logger
-import com.soywiz.korio.async.delay
 import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
-import com.soywiz.korio.util.encoding.Base64
-import venusbackend.simulator.ConnectionError
-import venusbackend.simulator.SimulatorError
 import venusbackend.simulator.comm.listeners.IConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.comm.listeners.ReadConnectionListener
@@ -20,6 +12,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     private val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
     private val readListener: ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger("MotherboardConnection Logger")
+    val context = EmptyCoroutineContext
     var isOn: Boolean = false
     var webSocketClient: WebSocketClient? = null
 
@@ -42,47 +35,23 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
     }
 
-    private fun busyWait(timeout: Long = 1000, functionToBeExecuted: suspend () -> Unit) {
-        var done = false
-        val afterTimeout = DateTime.now() + timeout.toDouble().milliseconds
-        launch(EmptyCoroutineContext) {
-            functionToBeExecuted()
-        }.invokeOnCompletion {
-            done = true
-        }
-        while (!done) {
-            if (DateTime.now() >= afterTimeout) {
-                break
-            }
-        }
-    }
-
-    override fun establishConnection(host: String, port: Int) {
-        var isConnected = false
-        busyWait {
-            isConnected = connectToVMB(host, port)
-        }
+    override suspend fun establishConnection(host: String, port: Int) {
+        println("Establishing connection...")
+        val isConnected = connectToVMB(host, port)
+        println("Done!")
         if (!isConnected) {
-            throw ConnectionError("Could not connect to the motherboard!")
+            println("Could not connect to the motherboard!")
         }
         connectionListeners.add(readListener)
         connectionListeners.add(LoggingConnectionListener())
-
-        launch(EmptyCoroutineContext) {
-            watchForMessages()
-        }
         register()
-        // Wait for 30 milliseconds so that the motherboard has time to send the power on/off signal
-        busyWait(100) {
-            delay(TimeSpan(99.0))
-        }
     }
 
     fun getReadListener(): ReadConnectionListener {
         return readListener
     }
 
-    private suspend fun watchForMessages() {
+    suspend fun watchForMessages() {
         while (true) {
             try {
                 val payload = webSocketClient!!.readBinary()
@@ -134,26 +103,22 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
     }
 
-    private fun register() {
+    private suspend fun register() {
         send(MessageFactory.createRegistrationMessage(startAddress, startAddress + size, -1L, "RISC-V CPU"), true)
     }
 
-    fun send(message: Message, register: Boolean = false) {
+    suspend fun send(message: Message, register: Boolean = false) {
         if (isOn || register) {
-            val reg = message.toByteArray()
-            val base64Message = Base64.encode(message.toByteArray())
-            var mess = ""
-            for (i in reg.indices) {
-                mess += reg[i].toUByte()
-                if (i != reg.size - 1) {
-                    mess += ";"
+            val messageToBeSent = message.toByteArray()
+            try {
+                webSocketClient!!.send(messageToBeSent)
+            } catch (e: Exception) {
+                logger.fatal {
+                    "Could not send message error: ${e.message}"
                 }
             }
-            launch(EmptyCoroutineContext) {
-                webSocketClient!!.send(message.toByteArray())
-            }
         } else {
-            throw SimulatorError("The motherboard is not on !")
+            println("The motherboard is not on !")
         }
     }
 

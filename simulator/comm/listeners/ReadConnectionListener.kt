@@ -1,7 +1,7 @@
 package venusbackend.simulator.comm.listeners
 
-import com.soywiz.klock.DateTime
-import com.soywiz.klock.milliseconds
+import com.soywiz.klock.TimeSpan
+import com.soywiz.korio.async.delay
 import venusbackend.and
 import venusbackend.simulator.comm.Message
 
@@ -10,17 +10,6 @@ class ReadConnectionListener : IConnectionListener() {
     var half: Int? = null
     var word: Int? = null
     var long: Long? = null
-    var done: Boolean = false
-
-    fun waitForReadingResponse(timeout: Long = 1000) {
-        val afterTimeout = DateTime.now() + timeout.toDouble().milliseconds
-        while (!done) {
-            if (DateTime.now() >= afterTimeout) {
-                break
-            }
-        }
-        done = false
-    }
 
     /**
      * Receives a byte in the payload and saves it in the b variable.
@@ -32,7 +21,10 @@ class ReadConnectionListener : IConnectionListener() {
             word = 0
             long = 0
             when (message.id) {
-                Message.ID_BYTEREPLY -> byte = (message.getPayload()[0] and 0xFF).toInt()
+                Message.ID_BYTEREPLY -> {
+                    byte = (message.getPayload()[0] and 0xFF).toInt()
+
+                }
                 Message.ID_WYDEREPLY -> half = ((message.getPayload()[1] and 0xFF).toInt() shl 8) or (message.getPayload()[0] and 0xFF).toInt()
                 Message.ID_TETRAREPLY -> {
                     for (i in message.getPayload().size - 1 downTo 0) {
@@ -51,13 +43,11 @@ class ReadConnectionListener : IConnectionListener() {
                     }
                 }
             }
-            done = true
         } else {
             byte = null
             half = null
             word = null
             long = null
-            done = true
         }
     }
 }

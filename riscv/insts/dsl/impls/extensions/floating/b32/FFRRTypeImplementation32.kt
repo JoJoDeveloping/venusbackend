@@ -10,7 +10,7 @@ import venusbackend.simulator.Simulator
  * Created by thaum on 8/6/2018.
  */
 class FFRRTypeImplementation32(private val eval: (Decimal, Decimal) -> Int) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val rs2 = mcode[InstructionField.RS2].toInt()
         val rd = mcode[InstructionField.RD].toInt()

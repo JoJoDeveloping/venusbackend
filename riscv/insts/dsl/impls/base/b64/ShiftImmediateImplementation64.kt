@@ -6,7 +6,7 @@ import venusbackend.riscv.insts.dsl.impls.InstructionImplementation
 import venusbackend.simulator.Simulator
 
 class ShiftImmediateImplementation64(private val eval: (Long, Long) -> Long) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val shamt = mcode[InstructionField.SHAMT].toLong()
         val rd = mcode[InstructionField.RD].toInt()

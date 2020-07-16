@@ -14,13 +14,13 @@ class LoadTypeInstruction(
     name: String,
     opcode: Int,
     funct3: Int,
-    load16: (Simulator, Short) -> Short = { _, _ -> throw NotImplementedError("no rv16") },
+    load16: suspend (Simulator, Short) -> Short = { _, _ -> throw NotImplementedError("no rv16") },
     postLoad16: (Short) -> Short = { it },
-    load32: (Simulator, Int) -> Int,
+    load32: suspend (Simulator, Int) -> Int,
     postLoad32: (Int) -> Int = { it },
-    load64: (Simulator, Long) -> Long = { _, _ -> throw NotImplementedError("no rv64") },
+    load64: suspend (Simulator, Long) -> Long = { _, _ -> throw NotImplementedError("no rv64") },
     postLoad64: (Long) -> Long = { it },
-    load128: (Simulator, QuadWord) -> QuadWord = { _, _ -> throw NotImplementedError("no rv128") },
+    load128: suspend (Simulator, QuadWord) -> QuadWord = { _, _ -> throw NotImplementedError("no rv128") },
     postLoad128: (QuadWord) -> QuadWord = { it }
 ) : Instruction(
         name = name,

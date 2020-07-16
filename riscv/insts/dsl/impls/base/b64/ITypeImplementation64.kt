@@ -7,7 +7,7 @@ import venusbackend.riscv.insts.dsl.impls.signExtend
 import venusbackend.simulator.Simulator
 
 class ITypeImplementation64(private val eval: (Long, Long) -> Long) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1: Int = mcode[InstructionField.RS1].toInt()
         val imm: Long = signExtend(mcode[InstructionField.IMM_11_0].toInt(), 12).toLong()
         val rd: Int = mcode[InstructionField.RD].toInt()

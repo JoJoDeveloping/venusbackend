@@ -121,7 +121,7 @@ enum class Syscall(val syscall: Int) {
 }
 
 // All file operations will return -1 if the file descriptor is not found.
-private fun openFile(sim: Simulator) {
+private suspend fun openFile(sim: Simulator) {
     /**
      * Attempt to open the file with the lowest number to return first. If cannot open file, return -1.
      * Look here for the permissionbits:https://en.cppreference.com/w/c/io/fopen
@@ -135,7 +135,7 @@ private fun openFile(sim: Simulator) {
     sim.setReg(Registers.a0, fdID)
 }
 
-private fun readFile(sim: Simulator) {
+private suspend fun readFile(sim: Simulator) {
     /**
      * Check file descriptor and check if we have the valid permissions.
      * If we can read from the file, start reading at the offset (default=0)
@@ -164,7 +164,7 @@ private fun readFile(sim: Simulator) {
     }
 }
 
-private fun writeFile(sim: Simulator) {
+private suspend fun writeFile(sim: Simulator) {
     /**
      * a0=15, a1=filedescriptor, a2=buffer to read data, a3=amt to write, a4=size of each item -> a0=Number of items written
      */
@@ -256,14 +256,14 @@ private fun printInteger(sim: Simulator) {
     Renderer.printConsole(sim.ecallMsg)
 }
 
-private fun printString(sim: Simulator) {
+private suspend fun printString(sim: Simulator) {
     val arg = sim.getReg(11)
     val s = getString(sim, arg)
     sim.ecallMsg += s
     Renderer.printConsole(s)
 }
 
-private fun atoi(sim: Simulator) {
+private suspend fun atoi(sim: Simulator) {
     val str_pointer = sim.getReg(Registers.a1)
     val s = getString(sim, str_pointer)
     val n = try {
@@ -301,7 +301,7 @@ private fun exitWithCode(sim: Simulator) {
     Renderer.printConsole("\nExited with error code $retVal\n")
 }
 
-private fun memdump(sim: Simulator) {
+private suspend fun memdump(sim: Simulator) {
     /**
      * Dumps Venus's state to the filename given as a pointer in a1. If a1 points to 0,
      * then the name is set to "venus.dump"
@@ -321,7 +321,7 @@ private fun memdump(sim: Simulator) {
     }
 }
 
-private fun getString(sim: Simulator, address: Number): String {
+private suspend fun getString(sim: Simulator, address: Number): String {
     var addr = address
     val s = StringBuilder()
     var c = sim.loadByte(address)

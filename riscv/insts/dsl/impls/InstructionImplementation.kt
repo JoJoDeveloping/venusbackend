@@ -4,5 +4,5 @@ import venusbackend.riscv.MachineCode
 import venusbackend.simulator.Simulator
 
 interface InstructionImplementation {
-    operator fun invoke(mcode: MachineCode, sim: Simulator)
+    suspend operator fun invoke(mcode: MachineCode, sim: Simulator)
 }

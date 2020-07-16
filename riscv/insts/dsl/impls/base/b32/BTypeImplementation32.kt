@@ -8,7 +8,7 @@ import venusbackend.riscv.insts.dsl.impls.signExtend
 import venusbackend.simulator.Simulator
 
 class BTypeImplementation32(private val cond: (Int, Int) -> Boolean) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1: Int = mcode[InstructionField.RS1].toInt()
         val rs2: Int = mcode[InstructionField.RS2].toInt()
         val imm: Int = constructBranchImmediate(mcode)

@@ -11,8 +11,8 @@ import venusbackend.simulator.Simulator
 /**
  * Created by thaum on 8/6/2018.
  */
-class FSTypeImplementation32(private val store: (Simulator, Int, Decimal) -> Unit) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+class FSTypeImplementation32(private val store: suspend (Simulator, Int, Decimal) -> Unit) : InstructionImplementation {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val rs2 = mcode[InstructionField.RS2].toInt()
         val imm = constructStoreImmediate(mcode)

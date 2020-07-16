@@ -9,11 +9,11 @@ import venusbackend.riscv.insts.dsl.parsers.extensions.floating.FITypeParser
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.Simulator
 
-class FITypeInstruction(
+open class FITypeInstruction(
     name: String,
     opcode: Int,
     funct3: Int,
-    eval32: (Int, Simulator) -> Decimal
+    eval32: suspend (Int, Simulator) -> Decimal
 ) : Instruction(
         name = name,
         format = ITypeFormat(opcode, funct3),

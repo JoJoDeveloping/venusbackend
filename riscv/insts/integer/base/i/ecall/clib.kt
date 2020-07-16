@@ -4,7 +4,7 @@ import venus.Renderer
 import venusbackend.riscv.Registers
 import venusbackend.simulator.Simulator
 
-fun clib(sim: Simulator) {
+suspend fun clib(sim: Simulator) {
     val whichCall = sim.getReg(Registers.a6)
     when (whichCall) {
         1 -> malloc(sim)
@@ -22,7 +22,7 @@ fun clib(sim: Simulator) {
  *
  * Returns to a0 a pointer to the new malloced data or NULL if the malloc has failed.
  */
-fun malloc(sim: Simulator) {
+suspend fun malloc(sim: Simulator) {
     val size = sim.getReg(Registers.a1).toInt()
     val dest = sim.alloc.malloc(size)
     sim.setReg(Registers.a0, dest)
@@ -35,7 +35,7 @@ fun malloc(sim: Simulator) {
  *
  * Returns to a0 a pointer to the new malloced data or NULL if the calloc has failed.
  */
-fun calloc(sim: Simulator) {
+suspend fun calloc(sim: Simulator) {
     val nitems = sim.getReg(Registers.a1).toInt()
     val size = sim.getReg(Registers.a2).toInt()
     val dest = sim.alloc.calloc(nitems, size)
@@ -49,7 +49,7 @@ fun calloc(sim: Simulator) {
  *
  * Returns to a0 a pointer to the new malloced data or NULL if the realloc has failed.
  */
-fun realloc(sim: Simulator) {
+suspend fun realloc(sim: Simulator) {
     val ptr = sim.getReg(Registers.a1).toInt()
     val size = sim.getReg(Registers.a2).toInt()
     val dest = sim.alloc.realloc(ptr, size)
@@ -62,7 +62,7 @@ fun realloc(sim: Simulator) {
  *
  * Free does not return anything
  */
-fun free(sim: Simulator) {
+suspend fun free(sim: Simulator) {
     val ptr = sim.getReg(Registers.a1).toInt()
     sim.alloc.free(ptr)
 }
@@ -73,7 +73,7 @@ fun free(sim: Simulator) {
  * Returns the number of blocks which are not free or -1 if there was an error
  * Errors are currently caused by the list to be incorrectly modified.
  */
-fun mallocActiveNumBlocks(sim: Simulator) {
+suspend fun mallocActiveNumBlocks(sim: Simulator) {
     val amt = sim.alloc.numActiveBlocks()
     sim.setReg(Registers.a0, amt)
 }

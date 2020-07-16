@@ -6,7 +6,7 @@ import venusbackend.riscv.insts.dsl.impls.InstructionImplementation
 import venusbackend.simulator.Simulator
 
 class CRTypeImplementation32(private val eval: (Int, Int) -> Int) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs2 = mcode[InstructionField.CRS2].toInt()
         val rd = mcode[InstructionField.RD].toInt()
         val vrs1 = sim.getReg(rd).toInt()

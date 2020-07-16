@@ -25,7 +25,7 @@ class Tracer(var sim: Simulator) {
         var wordAddressed = false
     }
 
-    fun trace() {
+    suspend fun trace() {
         traceStart()
         var err: SimulatorError? = null
         while (!sim.isDone()) {
@@ -56,7 +56,7 @@ class Tracer(var sim: Simulator) {
         this.tr.stringIndex = 0
     }
 
-    fun traceStart() {
+    suspend fun traceStart() {
         traceFullReset()
         sim.reset(keep_args = true)
         if (this.twoStage) {
@@ -69,7 +69,7 @@ class Tracer(var sim: Simulator) {
         }
     }
 
-    fun traceStep() {
+    suspend fun traceStep() {
         if (sim.isDone()) {
             return
         }
@@ -84,7 +84,7 @@ class Tracer(var sim: Simulator) {
         this.tr.traceLine++
     }
 
-    fun traceEnd() {
+    suspend fun traceEnd() {
         val currentTrace = getSingleTrace(this.tr.traceLine)
         currentTrace.prevTrace = this.tr.prevTrace
         this.tr.trace.add(currentTrace)
@@ -111,7 +111,7 @@ class Tracer(var sim: Simulator) {
         }
     }
 
-    fun getSingleTrace(line: Int): Trace {
+    suspend fun getSingleTrace(line: Int): Trace {
         var mc = MachineCode(0)
         if (!sim.isDone()) {
             mc = sim.getNextInstruction()
@@ -159,7 +159,7 @@ class Tracer(var sim: Simulator) {
         this.tr.reset()
     }
 
-    fun traceStringStep(): Boolean {
+    suspend fun traceStringStep(): Boolean {
         val t = this.tr.getNextTrace()
         if (twoStage && this.instFirst) {
             if (this.tr.peak().branched) {
@@ -203,7 +203,7 @@ class Tracer(var sim: Simulator) {
         return this.tr.hasNext()
     }
 
-    fun traceStringBranchHelper(t: Trace) {
+    suspend fun traceStringBranchHelper(t: Trace) {
         val pt = t.prevTrace
         val flushed = pt?.copy() ?: this.getSingleTrace(-1)
         var nextPC = flushed.pc + flushed.inst.length
@@ -217,7 +217,7 @@ class Tracer(var sim: Simulator) {
         this.tr.str += flushed.getString(format, base)
         this.tr.stringIndex++
     }
-    fun traceStringJumpHelper(t: Trace) {
+    suspend fun traceStringJumpHelper(t: Trace) {
         val pt = t.prevTrace
         val flushed = pt?.copy() ?: this.getSingleTrace(-1)
         var nextPC = flushed.pc + flushed.inst.length
@@ -252,7 +252,7 @@ class Tracer(var sim: Simulator) {
         this.tr.stred = true
     }
 
-    fun traceString() {
+    suspend fun traceString() {
         traceStringStart()
         while (tr.hasNext()) {
             traceStringStep()

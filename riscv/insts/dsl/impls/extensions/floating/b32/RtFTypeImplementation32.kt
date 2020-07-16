@@ -7,7 +7,7 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.Simulator
 
 class RtFTypeImplementation32(private val eval: (Int) -> Decimal) : InstructionImplementation {
-    override operator fun invoke(mcode: MachineCode, sim: Simulator) {
+    override suspend operator fun invoke(mcode: MachineCode, sim: Simulator) {
         val rs1 = mcode[InstructionField.RS1].toInt()
         val rd = mcode[InstructionField.RD].toInt()
         val vrs1 = sim.getReg(rs1).toInt()

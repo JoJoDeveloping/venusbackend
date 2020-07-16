@@ -1,10 +1,15 @@
 package venusbackend.simulator
 
+import com.soywiz.klock.TimeSpan
+import com.soywiz.korio.async.launch
+import com.soywiz.korio.async.withTimeout
+import com.soywiz.korio.net.ws.readBinary
 import venusbackend.and
 import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
+import kotlin.coroutines.EmptyCoroutineContext
 
 class MemoryVMB(private val connection: MotherboardConnection) : Memory {
 
@@ -16,19 +21,19 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         storeByte(address, 0.toByte())
     }
 
-    override fun loadByte(address: Number): Int {
+    override suspend fun loadByte(address: Number): Int {
         return read(address, MemSize.BYTE).toInt().and(0xff)
     }
 
-    override fun loadHalfWord(addr: Number): Int {
+    override suspend fun loadHalfWord(addr: Number): Int {
         return read(addr, MemSize.HALF).toInt().and(0xffff)
     }
 
-    override fun loadWord(addr: Number): Int {
+    override suspend fun loadWord(addr: Number): Int {
         return read(addr, MemSize.WORD).toInt()
     }
 
-    override fun loadLong(addr: Number): Long {
+    override suspend fun loadLong(addr: Number): Long {
         return read(addr, MemSize.LONG).toLong()
     }
 
@@ -40,7 +45,9 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         val translatedAddress = translate(addr)
         val tmp = value and 0xFF
         val message = MessageFactory.createWriteByteMessage(translatedAddress, tmp.toByte())
-        connection.send(message)
+        launch(EmptyCoroutineContext) {
+            connection.send(message)
+        }
     }
 
     override fun storeHalfWord(addr: Number, value: Number) {
@@ -50,7 +57,9 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         val translatedAddress = translate(addr)
         val tmp = value and 0xFFFF
         val message = MessageFactory.createWriteHalfMessage(translatedAddress, tmp.toInt())
-        connection.send(message)
+        launch(EmptyCoroutineContext) {
+            connection.send(message)
+        }
     }
 
     override fun storeWord(addr: Number, value: Number) {
@@ -60,13 +69,17 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
             tmp = value and 0xFFFFFFFFL
         }
         val message = MessageFactory.createWriteWordMessage(translatedAddress, tmp.toInt())
-        connection.send(message)
+        launch(EmptyCoroutineContext) {
+            connection.send(message)
+        }
     }
 
     override fun storeLong(addr: Number, value: Number) {
         val translatedAddress = translate(addr)
         val message = MessageFactory.createWriteLongMessage(translatedAddress, value.toLong())
-        connection.send(message)
+        launch(EmptyCoroutineContext) {
+            connection.send(message)
+        }
     }
 
     /**
@@ -83,7 +96,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
      * @param address the address of the byte
      * @return the data at the given address
      */
-    private fun read(address: Number, size: MemSize): Number {
+    private suspend fun read(address: Number, size: MemSize): Number {
         val translatedAddress = translate(address)
         var message: Message? = null
         when (size) {
@@ -99,8 +112,20 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
             message.finalizePayloadAndSize()
         }
         val listener = connection.getReadListener()
-        connection.send(message)
-        listener.waitForReadingResponse()
+        launch(connection.context) {
+            connection.send(message)
+        }
+        var payload : ByteArray = byteArrayOf()
+        try {
+            withTimeout(TimeSpan(100.0)) {
+                payload = connection.webSocketClient!!.readBinary()
+            }
+        } catch (e: Exception) {
+            println(e.message)
+        }
+
+        val messageFromVMB = Message().setup(payload)
+        listener.readData(messageFromVMB)
         var tmp: Number? = null
         when (size) {
             MemSize.BYTE -> {
