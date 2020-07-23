@@ -1,5 +1,8 @@
 package venusbackend.simulator.comm.listeners
 
+import com.soywiz.klock.TimeSpan
+import com.soywiz.korio.async.Signal
+import com.soywiz.korio.async.withTimeout
 import venusbackend.and
 import venusbackend.simulator.comm.Message
 
@@ -8,6 +11,13 @@ class ReadConnectionListener : IConnectionListener() {
     var half: Int? = null
     var word: Int? = null
     var long: Long? = null
+    val readSignal : Signal<Boolean> = Signal()
+
+    suspend fun waitForReadResponse() {
+        withTimeout(TimeSpan(10000.0)) {
+            readSignal.waitOneBase()
+        }
+    }
 
     /**
      * Receives a byte in the payload and saves it in the b variable.

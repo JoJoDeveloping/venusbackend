@@ -1,6 +1,7 @@
 package venusbackend.simulator.comm
 
 import com.soywiz.klogger.Logger
+import com.soywiz.korio.async.Signal
 import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
 import venusbackend.simulator.comm.listeners.IConnectionListener
@@ -9,7 +10,7 @@ import venusbackend.simulator.comm.listeners.ReadConnectionListener
 import kotlin.coroutines.EmptyCoroutineContext
 
 class MotherboardConnection(private val startAddress: Long, private val size: Int) : IConnection {
-    private val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
+    val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
     private val readListener: ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger("MotherboardConnection Logger")
     val context = EmptyCoroutineContext
@@ -30,7 +31,9 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
             webSocketClient = WebSocketClient("ws://$host:$port")
             true
         } catch (e: Exception) {
-            logger.fatal { e.message }
+            logger.fatal {
+                "Could not connect to motherboard. Error message: ${e.message}"
+            }
             false
         }
     }
@@ -43,7 +46,6 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
             println("Could not connect to the motherboard!")
         }
         connectionListeners.add(readListener)
-        connectionListeners.add(LoggingConnectionListener())
         register()
     }
 
@@ -59,22 +61,28 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                 dispatchMessage(message)
             } catch (e: Exception) {
                 logger.fatal {
-                    e.message
+                    "Error trying to read the message: ${e.message}"
                 }
                 return
             }
         }
     }
 
+    private fun notifyReadListener() {
+        readListener.readSignal(true)
+        readListener.readSignal.clear()
+    }
+
     /*
      * This message will only be called from the receiver thread.
      */
-    private fun dispatchMessage(message: Message) {
+    fun dispatchMessage(message: Message) {
         for (listener in connectionListeners) {
             if (message.isBusMessage) {
                 when (message.id) {
                     Message.ID_POWERON -> {
                         isOn = true
+                        println("ON")
                         listener.powerOn()
                     }
                     Message.ID_POWEROFF -> {
@@ -91,10 +99,22 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
             } else {
                 when (message.id) {
                     Message.ID_WRITETETRA -> listener.dataReceived((message.address - startAddress).toInt(), message.getPayload())
-                    Message.ID_BYTEREPLY -> listener.readData(message)
-                    Message.ID_WYDEREPLY -> listener.readData(message)
-                    Message.ID_TETRAREPLY -> listener.readData(message)
-                    Message.ID_READREPLY -> listener.readData(message)
+                    Message.ID_BYTEREPLY -> {
+                        listener.readData(message)
+                        notifyReadListener()
+                    }
+                    Message.ID_WYDEREPLY -> {
+                        listener.readData(message)
+                        notifyReadListener()
+                    }
+                    Message.ID_TETRAREPLY -> {
+                        listener.readData(message)
+                        notifyReadListener()
+                    }
+                    Message.ID_READREPLY -> {
+                        listener.readData(message)
+                        notifyReadListener()
+                    }
                     else -> logger.warn {
                         println("Unhandled message id ${message.id}")
                     }

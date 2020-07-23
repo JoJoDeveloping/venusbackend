@@ -2,9 +2,8 @@ package venusbackend.simulator
 
 /* ktlint-disable no-wildcard-imports */
 
-import com.soywiz.klock.TimeSpan
-import com.soywiz.korio.async.delay
 import com.soywiz.korio.async.launch
+import com.soywiz.korio.net.ws.readBinary
 import kotlinx.coroutines.Dispatchers
 import venus.Renderer
 import venus.vfs.VirtualFileSystem
@@ -14,8 +13,10 @@ import venusbackend.riscv.*
 import venusbackend.riscv.insts.dsl.types.Instruction
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
+import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
+import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
 import kotlin.math.max
 
@@ -217,12 +218,17 @@ class Simulator(
         val connection = MotherboardConnection(propertyManager.startAddress, 0)
         try {
             connection.establishConnection(propertyManager.hostname, propertyManager.port)
-            launch(Dispatchers.Default) {
-                connection.watchForMessages()
+            print("Power...")
+            while (!connection.isOn) {
+                val payload = connection.webSocketClient!!.readBinary()
+                val message = Message().setup(payload)
+                connection.dispatchMessage(message)
             }
-            delay(TimeSpan(100.0)) // wait for the power on signal from the motherboard
-            if (!connection.isOn) {
-                throw SimulatorError("Please turn on the motherboard in order to use it")
+            connection.connectionListeners.add(LoggingConnectionListener())
+            if (connection.isOn) {
+                launch(Dispatchers.Default) {
+                    connection.watchForMessages()
+                }
             }
         } catch (e: Exception) {
             throw SimulatorError("Could not connect to host ${propertyManager.hostname} ${e.message}")

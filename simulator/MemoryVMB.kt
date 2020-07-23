@@ -1,9 +1,6 @@
 package venusbackend.simulator
 
-import com.soywiz.klock.TimeSpan
 import com.soywiz.korio.async.launch
-import com.soywiz.korio.async.withTimeout
-import com.soywiz.korio.net.ws.readBinary
 import venusbackend.and
 import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
@@ -115,17 +112,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         launch(connection.context) {
             connection.send(message)
         }
-        var payload: ByteArray = byteArrayOf()
-        try {
-            withTimeout(TimeSpan(1000.0)) {
-                payload = connection.webSocketClient!!.readBinary()
-            }
-        } catch (e: Exception) {
-            println(e.message)
-        }
-
-        val messageFromVMB = Message().setup(payload)
-        listener.readData(messageFromVMB)
+        listener.waitForReadResponse()
         var tmp: Number? = null
         when (size) {
             MemSize.BYTE -> {
