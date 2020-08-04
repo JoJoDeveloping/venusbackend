@@ -1,6 +1,8 @@
 package venusbackend.simulator.comm.listeners
 
 import com.soywiz.klogger.Logger
+import venusbackend.simulator.SimulatorState
+import venusbackend.simulator.comm.Message
 
 class LoggingConnectionListener : IConnectionListener() {
     var logger: Logger = Logger("Logger Listener")
@@ -20,8 +22,8 @@ class LoggingConnectionListener : IConnectionListener() {
         }
     }
 
-    override fun interruptRequest(irqNumber: Int) {
-        logger.info { "Irq $irqNumber" }
+    override suspend fun interruptRequest(message: Message, simulatorState: SimulatorState) {
+        logger.info { "Irq ${message.slot.toInt()}" }
     }
 
     override fun powerOff() {

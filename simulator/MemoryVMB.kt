@@ -109,9 +109,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
             message.finalizePayloadAndSize()
         }
         val listener = connection.getReadListener()
-        launch(connection.context) {
-            connection.send(message)
-        }
+        connection.send(message)
         listener.waitForReadResponse()
         var tmp: Number? = null
         when (size) {

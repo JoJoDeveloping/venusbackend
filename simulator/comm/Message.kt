@@ -87,7 +87,7 @@ class Message {
         return type and TYPE_ROUTE != 0.toByte()
     }
 
-    private fun hasPayload(): Boolean {
+    fun hasPayload(): Boolean {
         return type and TYPE_PAYLOAD != 0.toByte()
     }
 

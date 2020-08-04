@@ -10,14 +10,17 @@ import venus.vfs.VirtualFileSystem
 import venusbackend.*
 import venusbackend.linker.LinkedProgram
 import venusbackend.riscv.*
+import venusbackend.riscv.insts.dsl.parsers.regNameToNumber
 import venusbackend.riscv.insts.dsl.types.Instruction
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.simulator.comm.PropertyManager
+import venusbackend.simulator.comm.listeners.InterruptConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -140,7 +143,17 @@ class Simulator(
         }
     }
 
+    fun handleInterrupts() {
+        val mstatus = getSReg(SpecialRegisters.MSTATUS.address)
+        val mieBit = mstatus and 0x8
+        if (mieBit == 0) { // Interrupts are disabled
+            return
+        }
+        // Check mie and mip for interrupts
+    }
+
     suspend fun step(): List<Diff> {
+        handleInterrupts()
         if (settings.maxSteps >= 0 && cycles >= settings.maxSteps) {
             throw ExceededAllowedCyclesError("Ran for more than the max allowed steps (${settings.maxSteps})!")
         }
@@ -215,7 +228,7 @@ class Simulator(
             propertyManager.hostname = host
             propertyManager.port = port
         }
-        val connection = MotherboardConnection(propertyManager.startAddress, 0)
+        val connection = MotherboardConnection(propertyManager.startAddress, 0, this.state)
         try {
             connection.establishConnection(propertyManager.hostname, propertyManager.port)
             print("Power...")
@@ -226,7 +239,8 @@ class Simulator(
             }
             connection.connectionListeners.add(LoggingConnectionListener())
             if (connection.isOn) {
-                launch(Dispatchers.Default) {
+                connection.connectionListeners.add(InterruptConnectionListener())
+                launch(EmptyCoroutineContext) {
                     connection.watchForMessages()
                 }
             }
@@ -335,6 +349,10 @@ class Simulator(
         state.setReg(id, v)
         postInstruction.add(RegisterDiff(id, getReg(id)))
     }
+
+    fun getSReg(id:Int) = state.getSReg(id)
+
+    suspend fun setSReg(id: Int, v: Number) = state.setSReg(id, v)
 
     fun setRegNoUndo(id: Int, v: Number) {
         state.setReg(id, v)

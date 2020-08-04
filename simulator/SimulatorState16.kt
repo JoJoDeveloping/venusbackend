@@ -39,6 +39,15 @@ class SimulatorState16(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun setReg(i: Int, v: Number) { if (i != 0) regs16[i] = v.toShort() }
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
+    override fun getSReg(i: Int): Number {
+        return 0
+        // TODO("Not yet implemented")
+    }
+
+    override suspend fun setSReg(i: Int, v: Number) {
+        // TODO("Not yet implemented")
+    }
+
     override fun getHeapEnd(): Number {
         return heapEnd
     }

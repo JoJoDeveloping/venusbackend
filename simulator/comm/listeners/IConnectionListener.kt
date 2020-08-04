@@ -1,5 +1,6 @@
 package venusbackend.simulator.comm.listeners
 
+import venusbackend.simulator.SimulatorState
 import venusbackend.simulator.comm.Message
 
 abstract class IConnectionListener {
@@ -10,6 +11,6 @@ abstract class IConnectionListener {
     open fun reset() {}
     open fun readRequest() {}
     open fun writeRequest() {}
-    open fun interruptRequest(irqNumber: Int) {}
+    open suspend fun interruptRequest(message: Message, simulatorState: SimulatorState) {}
     open fun terminate() {}
 }

@@ -2,18 +2,22 @@ package venusbackend.simulator.comm
 
 import com.soywiz.klogger.Logger
 import com.soywiz.korio.async.Signal
+import com.soywiz.korio.async.addSuspend
 import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
+import kotlinx.coroutines.sync.Mutex
+import venusbackend.simulator.SimulatorState
 import venusbackend.simulator.comm.listeners.IConnectionListener
-import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.comm.listeners.ReadConnectionListener
 import kotlin.coroutines.EmptyCoroutineContext
 
-class MotherboardConnection(private val startAddress: Long, private val size: Int) : IConnection {
+class MotherboardConnection(private val startAddress: Long, private val size: Int, private val simulatorState: SimulatorState) : IConnection {
     val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
     private val readListener: ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger("MotherboardConnection Logger")
+    private val connectionMutex = Mutex()
     val context = EmptyCoroutineContext
+    val  signal = Signal<Message>()
     var isOn: Boolean = false
     var webSocketClient: WebSocketClient? = null
 
@@ -47,6 +51,9 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         }
         connectionListeners.add(readListener)
         register()
+        signal.addSuspend {
+            dispatchMessage(it)
+        }
     }
 
     fun getReadListener(): ReadConnectionListener {
@@ -58,7 +65,8 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
             try {
                 val payload = webSocketClient!!.readBinary()
                 val message = Message().setup(payload)
-                dispatchMessage(message)
+                //dispatchMessage(message)
+                signal(message)
             } catch (e: Exception) {
                 logger.fatal {
                     "Error trying to read the message: ${e.message}"
@@ -70,13 +78,13 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
 
     private fun notifyReadListener() {
         readListener.readSignal(true)
-        readListener.readSignal.clear()
     }
 
     /*
      * This message will only be called from the receiver thread.
      */
-    fun dispatchMessage(message: Message) {
+    suspend fun dispatchMessage(message: Message) {
+        connectionMutex.lock()
         for (listener in connectionListeners) {
             if (message.isBusMessage) {
                 when (message.id) {
@@ -89,11 +97,13 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                         listener.powerOff()
                         isOn = false
                     }
-                    Message.ID_INTERRUPT -> listener.interruptRequest(message.slot.toInt())
+                    Message.ID_INTERRUPT -> {
+                        listener.interruptRequest(message, simulatorState)
+                    }
                     Message.ID_RESET -> listener.reset()
                     Message.ID_TERMINATE -> listener.terminate()
                     else -> logger.warn {
-                        println("Unhandled message id ${message.id}")
+                        println("Unhandled bus message id ${message.id}")
                     }
                 }
             } else {
@@ -121,6 +131,7 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
                 }
             }
         }
+        connectionMutex.unlock()
     }
 
     private suspend fun register() {
