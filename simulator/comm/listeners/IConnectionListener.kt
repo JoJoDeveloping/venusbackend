@@ -5,7 +5,7 @@ import venusbackend.simulator.comm.Message
 
 abstract class IConnectionListener {
     open fun dataReceived(offset: Int, payload: ByteArray?) {}
-    open fun readData(message: Message?) {}
+    open suspend fun readData(message: Message) {}
     open fun powerOn() {}
     open fun powerOff() {}
     open fun reset() {}

@@ -18,7 +18,7 @@ interface SimulatorState {
     fun setReg(i: Int, v: Number)
     fun getFReg(i: Int): Decimal
     fun setFReg(i: Int, v: Decimal)
-    fun getSReg(i: Int): Number
+    suspend fun getSReg(i: Int): Number
     suspend fun setSReg(i: Int, v: Number)
     fun getHeapEnd(): Number
     fun incHeapEnd(amount: Number)

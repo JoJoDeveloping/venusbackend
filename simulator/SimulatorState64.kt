@@ -7,8 +7,8 @@ import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 
-val mutex64: Mutex = Mutex()
-val signal64 = Signal<SimulatorState64.SpecialRegisterSetter64>()
+private val mutex64: Mutex = Mutex()
+private val signal64 = Signal<SimulatorState64.SpecialRegisterSetter64>()
 
 class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState {
     private val regs64 = Array(32) { 0.toLong() }
@@ -58,8 +58,11 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun setReg(i: Int, v: Number) { if (i != 0) regs64[i] = v.toLong() }
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
-    override fun getSReg(i: Int): Number {
-        return sregs64[i]!!.content
+    override suspend fun getSReg(i: Int): Number {
+        mutex64.lock()
+        val result = sregs64[i]!!.content
+        mutex64.unlock()
+        return result
     }
 
     override suspend fun setSReg(i: Int, v: Number) {

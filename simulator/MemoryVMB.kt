@@ -1,6 +1,7 @@
 package venusbackend.simulator
 
 import com.soywiz.korio.async.launch
+import kotlinx.coroutines.Dispatchers
 import venusbackend.and
 import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
@@ -42,7 +43,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         val translatedAddress = translate(addr)
         val tmp = value and 0xFF
         val message = MessageFactory.createWriteByteMessage(translatedAddress, tmp.toByte())
-        launch(EmptyCoroutineContext) {
+        launch(Dispatchers.Default) {
             connection.send(message)
         }
     }
@@ -54,7 +55,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         val translatedAddress = translate(addr)
         val tmp = value and 0xFFFF
         val message = MessageFactory.createWriteHalfMessage(translatedAddress, tmp.toInt())
-        launch(EmptyCoroutineContext) {
+        launch(Dispatchers.Default) {
             connection.send(message)
         }
     }
@@ -66,7 +67,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
             tmp = value and 0xFFFFFFFFL
         }
         val message = MessageFactory.createWriteWordMessage(translatedAddress, tmp.toInt())
-        launch(EmptyCoroutineContext) {
+        launch(Dispatchers.Default) {
             connection.send(message)
         }
     }
@@ -74,7 +75,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
     override fun storeLong(addr: Number, value: Number) {
         val translatedAddress = translate(addr)
         val message = MessageFactory.createWriteLongMessage(translatedAddress, value.toLong())
-        launch(EmptyCoroutineContext) {
+        launch(Dispatchers.Default) {
             connection.send(message)
         }
     }
@@ -110,6 +111,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         }
         val listener = connection.getReadListener()
         connection.send(message)
+        // println("Waiting for memory read response")
         listener.waitForReadResponse()
         var tmp: Number? = null
         when (size) {

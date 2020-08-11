@@ -10,7 +10,6 @@ import venus.vfs.VirtualFileSystem
 import venusbackend.*
 import venusbackend.linker.LinkedProgram
 import venusbackend.riscv.*
-import venusbackend.riscv.insts.dsl.parsers.regNameToNumber
 import venusbackend.riscv.insts.dsl.types.Instruction
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
@@ -20,7 +19,6 @@ import venusbackend.simulator.comm.PropertyManager
 import venusbackend.simulator.comm.listeners.InterruptConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -61,6 +59,7 @@ class Simulator(
         }
         (state).getReg(1)
         var i = 0
+        state.setMaxPC(MemorySegments.TEXT_BEGIN)
         for (inst in linkedProgram.prog.insts) {
             instOrderMapping[i] = state.getMaxPC().toInt()
             invInstOrderMapping[state.getMaxPC().toInt()] = i
@@ -98,6 +97,22 @@ class Simulator(
 //        breakpoints = Array(linkedProgram.prog.insts.size, { false })
     }
 
+    fun loadBiosIntoMemory(bios: Program, startAddress: Int = MemorySegments.TEXT_BEGIN) {
+        var address = startAddress
+        for (inst in bios.insts) {
+            var mcode = inst[InstructionField.ENTIRE]
+            for (j in 0 until inst.length) {
+                state.mem.storeByte(address, mcode and 0xFF)
+                mcode = mcode shr 8
+                address++
+            }
+        }
+        MemorySegments.TEXT_BEGIN = address + 1
+        state.setMaxPC(address + 1)
+        println("Changed maxpc to: ${state.getMaxPC()}")
+        println("Changed text begin to: ${MemorySegments.TEXT_BEGIN}")
+    }
+
     fun isDone(): Boolean {
         return if (settings.ecallOnlyExit) {
             this.exitcode != null
@@ -123,10 +138,6 @@ class Simulator(
         return linkedProgram.prog.insts[instnum]
     }
 
-    fun setMemory(mem: Memory) {
-        state.mem = mem
-    }
-
     suspend fun run() {
         while (!isDone()) {
             step()
@@ -143,17 +154,68 @@ class Simulator(
         }
     }
 
-    fun handleInterrupts() {
+    suspend fun handleMachineInterrupts() {
+        //println("Handling machine interrupts")
         val mstatus = getSReg(SpecialRegisters.MSTATUS.address)
         val mieBit = mstatus and 0x8
         if (mieBit == 0) { // Interrupts are disabled
             return
         }
-        // Check mie and mip for interrupts
+        val mie = getSReg(SpecialRegisters.MIE.address)
+        if (mie == 0) { // all interrupts are disabled
+            return
+        }
+        val mip = getSReg(SpecialRegisters.MIP.address)
+        val meieBit = mie and 0x800 shr 11 // Machine external interrupt enable bit
+        val meipBit = mip and 0x800 shr 11 // Machine external interrupt pending bit
+        val mtieBit = mie and 0x80 shr 7   // Machine timer interrupt enable bit
+        val mtipBit = mip and 0x80 shr 7   // Machine timer interrupt pending bit
+        val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
+        val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
+        if ((meieBit != 0 && meipBit != 0) || (mtieBit != 0 && mtipBit != 0) || (msieBit != 0 && msipBit != 0)) {
+            //println("Setting mepc to ${state.getPC()}")
+            setSReg(SpecialRegisters.MEPC.address, state.getPC())
+
+            val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
+            setSReg(SpecialRegisters.MSTATUS.address, ((getSReg(SpecialRegisters.MSTATUS.address) shr 4) shl 4) or last3BitsOfMstatus)
+
+            if (meipBit != 0) {
+                // clear meipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b011111111111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+            if (mtipBit != 0) {
+                // clear mtipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b111101111111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+            if (msipBit != 0) {
+                // clear msipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b111111110111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+            // we don't need to set mpp bit in mstatus because we only have machine mode
+            val maskForMpieBit = mieBit shl 4
+            setSReg(SpecialRegisters.MSTATUS.address, getSReg(SpecialRegisters.MSTATUS.address) or maskForMpieBit)
+            val mtvec = getSReg(SpecialRegisters.MTVEC.address)
+            when (val mtvec2LSB = mtvec and 0x3) {
+                1 -> {
+                    println("Vectored!")
+                    state.setPC(getSReg(SpecialRegisters.MTVEC.address) + 4 * getSReg(SpecialRegisters.MCAUSE.address))
+                }
+                0 -> {
+                    println("Single vectored")
+                    state.setPC(getSReg(SpecialRegisters.MTVEC.address))
+                }
+                else -> {
+                    throw SimulatorError("$mtvec2LSB is not a valid mode. You can only use 01 (vectored mode) or 00 (direct mode)")
+                }
+            }
+        }
     }
 
     suspend fun step(): List<Diff> {
-        handleInterrupts()
+        handleMachineInterrupts()
         if (settings.maxSteps >= 0 && cycles >= settings.maxSteps) {
             throw ExceededAllowedCyclesError("Ran for more than the max allowed steps (${settings.maxSteps})!")
         }
@@ -240,7 +302,7 @@ class Simulator(
             connection.connectionListeners.add(LoggingConnectionListener())
             if (connection.isOn) {
                 connection.connectionListeners.add(InterruptConnectionListener())
-                launch(EmptyCoroutineContext) {
+                launch(Dispatchers.Default) {
                     connection.watchForMessages()
                 }
             }
@@ -350,7 +412,7 @@ class Simulator(
         postInstruction.add(RegisterDiff(id, getReg(id)))
     }
 
-    fun getSReg(id:Int) = state.getSReg(id)
+    suspend fun getSReg(id:Int) = state.getSReg(id)
 
     suspend fun setSReg(id: Int, v: Number) = state.setSReg(id, v)
 

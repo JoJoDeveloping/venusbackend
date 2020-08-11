@@ -3,6 +3,7 @@ package venusbackend.simulator.comm.listeners
 import com.soywiz.klock.TimeSpan
 import com.soywiz.korio.async.Signal
 import com.soywiz.korio.async.withTimeout
+import kotlinx.coroutines.channels.Channel
 import venusbackend.and
 import venusbackend.simulator.comm.Message
 
@@ -11,18 +12,25 @@ class ReadConnectionListener : IConnectionListener() {
     var half: Int? = null
     var word: Int? = null
     var long: Long? = null
-    val readSignal : Signal<Boolean> = Signal()
+    //private val readChannel = Channel<Message>(Channel.RENDEZVOUS)
+    private val readSignal = Signal<Boolean>()
 
     suspend fun waitForReadResponse() {
         withTimeout(TimeSpan(10000.0)) {
+            //receivedMessage = readChannel.receive()
             readSignal.waitOneBase()
         }
     }
 
+    override suspend fun readData(message: Message) {
+        //readChannel.send(message)
+        setData(message)
+        readSignal(true)
+    }
     /**
      * Receives a byte in the payload and saves it in the b variable.
      */
-    override fun readData(message: Message?) {
+    private fun setData(message: Message?) {
         if (message != null) {
             byte = 0
             half = 0
