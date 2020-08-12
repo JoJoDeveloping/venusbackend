@@ -9,8 +9,16 @@ class InterruptConnectionListener: IConnectionListener() {
 
     override suspend fun interruptRequest(message: Message, simulatorState: SimulatorState) {
         simulatorState.setSReg(SpecialRegisters.MIP.address, simulatorState.getSReg(SpecialRegisters.MIP.address) or 0b100000000000) // set the machine external interrupt bit in mip
-        simulatorState.setSReg(SpecialRegisters.MCAUSE.address, message.slot.toInt())
-        //println("Now this is the value of mip register: ${simulatorState.getSReg(SpecialRegisters.MIP.address)}")
+        var mcause: Number = 0
+        when(simulatorState.registerWidth) { // set interrupt bit
+            32 -> mcause = 1 shl 31
+            64 -> mcause = 1L shl 63
+        }
+        when(message.slot.toInt()) {
+            44 -> mcause = mcause or 7 // machine timer interrupt
+            else -> mcause = mcause or 11  // machine external interrupt
+        }
+        simulatorState.setSReg(SpecialRegisters.MCAUSE.address, mcause)
     }
 
 }

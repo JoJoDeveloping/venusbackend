@@ -1,18 +1,18 @@
 package venusbackend.simulator
 
-import com.soywiz.korio.async.Signal
-import com.soywiz.korio.async.addSuspend
-import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.withContext
 import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
+import kotlin.coroutines.EmptyCoroutineContext
 
-private val mutex64: Mutex = Mutex()
-private val signal64 = Signal<SimulatorState64.SpecialRegisterSetter64>()
+private val sregs64 = mutableMapOf<Int, SimulatorState64.CSR64>()
+private val semaphore64: Semaphore = Semaphore(1)
+private val context64 = EmptyCoroutineContext
 
 class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState {
     private val regs64 = Array(32) { 0.toLong() }
-    private val sregs64 = mutableMapOf<Int, CSR64>()
     private val fregs = Array(32) { Decimal() }
     private var pc: Long = 0
     private var maxpc: Long = MemorySegments.TEXT_BEGIN.toLong()
@@ -59,27 +59,23 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
     override suspend fun getSReg(i: Int): Number {
-        mutex64.lock()
-        val result = sregs64[i]!!.content
-        mutex64.unlock()
+        semaphore64.acquire()
+        val result: Long
+        withContext(context64) {
+            result = sregs64[i]!!.content
+        }
+        semaphore64.release()
         return result
     }
 
     override suspend fun setSReg(i: Int, v: Number) {
-        if (signal64.listenerCount == 0) {
-            signal64.addSuspend {
-                setSpecialRegister(it.i,it.v)
+        semaphore64.acquire()
+        if (sregs64[i]!!.privilege == Privilege.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
+            withContext(context64) {
+                sregs64[i]!!.content = v.toLong()
             }
         }
-        signal64(SpecialRegisterSetter64(i, v))
-    }
-
-    private suspend fun setSpecialRegister(i: Int, v: Number) {
-        mutex64.lock()
-        if (sregs64[i]!!.privilege == Privilege.MRW) {
-            sregs64[i]!!.content = v.toLong()
-        }
-        mutex64.unlock()
+        semaphore64.release()
     }
 
     override fun getHeapEnd(): Number {

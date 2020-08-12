@@ -5,11 +5,7 @@ import com.soywiz.korio.async.launch
 import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.selects.SelectBuilder
-import kotlinx.coroutines.selects.SelectClause1
-import kotlinx.coroutines.selects.SelectInstance
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import venusbackend.simulator.SimulatorState

@@ -7,7 +7,6 @@ import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
-import kotlin.coroutines.EmptyCoroutineContext
 
 class MemoryVMB(private val connection: MotherboardConnection) : Memory {
 
@@ -111,7 +110,6 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         }
         val listener = connection.getReadListener()
         connection.send(message)
-        // println("Waiting for memory read response")
         listener.waitForReadResponse()
         var tmp: Number? = null
         when (size) {

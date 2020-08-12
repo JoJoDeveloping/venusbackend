@@ -59,45 +59,22 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
     override suspend fun getSReg(i: Int): Number {
-        //println("Getting sReg")
         semaphore32.acquire()
-        //println("Locked by get")
-        var result : Int? = null
+        val result : Int
         withContext(context32) {
             result = sregs32[i]!!.content.value
         }
         semaphore32.release()
-        //println("Returning get")
-        if (result == null) {
-            throw SimulatorError("Could not get the value for special register $i")
-        }
-        return result as Number
+        return result
     }
 
     override suspend fun setSReg(i: Int, v: Number) {
-        //println("Setting sReg")
-        /*if (signal32.listenerCount == 0) {
-            signal32.addSuspend {
-                setSpecialRegister(it.i,it.v)
-            }
-        }
-        signal32(SpecialRegisterSetter32(i, v))
-         */
-        setSpecialRegister(i, v)
-    }
-
-    private suspend fun setSpecialRegister(i: Int, v: Number) {
-        //println("Getting sReg mutex setting")
         semaphore32.acquire()
-        //println("Got mutex to set sReg")
-        if (sregs32[i]!!.privilege == Privilege.MRW) {
+        if (sregs32[i]!!.privilege == Privilege.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
             withContext(context32) {
-                //sregs32[i]!!.content.compareAndSet(v.toInt(), v.toInt())
                 sregs32[i]!!.content.value = v.toInt()
             }
-            //println("sReg set ok")
         }
-        //println("unlocking mutex from set")
         semaphore32.release()
     }
 

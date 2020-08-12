@@ -18,7 +18,6 @@ class TRTypeImplementation: InstructionImplementation {
          * Then sets the mie bit to the value that was in mpie.
          */
         val mstatusNewValue = (((((sim.getSReg(SpecialRegisters.MSTATUS.address) shr 8) shl 8) or last7BitsOfMstatus) or mieBitMask))
-        //println("Setting mstatus from ${sim.getSReg(SpecialRegisters.MSTATUS.address)} to $mstatusNewValue")
         sim.setSReg(SpecialRegisters.MSTATUS.address, mstatusNewValue)
         // mpp bit in mstatus will not be set because currently there's only machine mode
         val mip = sim.getSReg(SpecialRegisters.MIP.address)
@@ -29,7 +28,6 @@ class TRTypeImplementation: InstructionImplementation {
         val mtipBit = mip and 0x80 shr 7   // Machine timer interrupt pending bit
         val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
         val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
-        //println("Setting PC to: ${sim.getSReg(SpecialRegisters.MEPC.address)} and it was: ${sim.getPC()}, maxPC: ${sim.getMaxPC()}")
         val newPC = sim.getSReg(SpecialRegisters.MEPC.address)
         sim.setPC(newPC)
     }

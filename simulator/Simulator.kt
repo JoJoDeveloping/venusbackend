@@ -155,7 +155,6 @@ class Simulator(
     }
 
     suspend fun handleMachineInterrupts() {
-        //println("Handling machine interrupts")
         val mstatus = getSReg(SpecialRegisters.MSTATUS.address)
         val mieBit = mstatus and 0x8
         if (mieBit == 0) { // Interrupts are disabled
@@ -173,7 +172,6 @@ class Simulator(
         val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
         val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
         if ((meieBit != 0 && meipBit != 0) || (mtieBit != 0 && mtipBit != 0) || (msieBit != 0 && msipBit != 0)) {
-            //println("Setting mepc to ${state.getPC()}")
             setSReg(SpecialRegisters.MEPC.address, state.getPC())
 
             val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
@@ -200,11 +198,11 @@ class Simulator(
             val mtvec = getSReg(SpecialRegisters.MTVEC.address)
             when (val mtvec2LSB = mtvec and 0x3) {
                 1 -> {
-                    println("Vectored!")
+                    // Vectored mode
                     state.setPC(getSReg(SpecialRegisters.MTVEC.address) + 4 * getSReg(SpecialRegisters.MCAUSE.address))
                 }
                 0 -> {
-                    println("Single vectored")
+                    // Direct mode
                     state.setPC(getSReg(SpecialRegisters.MTVEC.address))
                 }
                 else -> {
