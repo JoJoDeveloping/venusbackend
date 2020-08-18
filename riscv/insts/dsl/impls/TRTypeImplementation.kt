@@ -20,15 +20,21 @@ class TRTypeImplementation: InstructionImplementation {
         val mstatusNewValue = (((((sim.getSReg(SpecialRegisters.MSTATUS.address) shr 8) shl 8) or last7BitsOfMstatus) or mieBitMask))
         sim.setSReg(SpecialRegisters.MSTATUS.address, mstatusNewValue)
         // mpp bit in mstatus will not be set because currently there's only machine mode
-        val mip = sim.getSReg(SpecialRegisters.MIP.address)
-        val mie = sim.getSReg(SpecialRegisters.MIE.address)
-        val meieBit = mie and 0x800 shr 11 // Machine external interrupt enable bit
-        val meipBit = mip and 0x800 shr 11 // Machine external interrupt pending bit
-        val mtieBit = mie and 0x80 shr 7   // Machine timer interrupt enable bit
-        val mtipBit = mip and 0x80 shr 7   // Machine timer interrupt pending bit
-        val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
-        val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
         val newPC = sim.getSReg(SpecialRegisters.MEPC.address)
-        sim.setPC(newPC)
+        if (sim.state.registerWidth == 32) {
+            if (sim.inSoftwareInterruptHandler) {
+                sim.setPC(newPC.toInt() + 4)
+                sim.inSoftwareInterruptHandler = false
+            } else {
+                sim.setPC(newPC.toInt())
+            }
+        } else if (sim.state.registerWidth == 64) {
+            if (sim.inSoftwareInterruptHandler) {
+                sim.setPC(newPC.toInt() + 4)
+                sim.inSoftwareInterruptHandler = false
+            } else {
+                sim.setPC(newPC.toLong())
+            }
+        }
     }
 }

@@ -5,15 +5,15 @@ import venusbackend.simulator.SimulatorError
 /** A singleton containing constants which say where various segments start */
 object MemorySegments {
     /** Memory address where the stack segment starts (growing downwards) */
-    const val STACK_BEGIN = 0x7fff_fff0
+    const val STACK_BEGIN: Int = 0x1FFF0FFF
     /** Memory address where the heap segment starts */
-    const val HEAP_BEGIN = 0x1000_8000
+    const val HEAP_BEGIN: Int = 0x11000800
     /** Memory address where the data segment starts */
-    var STATIC_BEGIN = 0x1000_0000
+    var STATIC_BEGIN: Int = 0x10000800
     /**
      * Memory address where the text segment starts
      */
-    public var TEXT_BEGIN = 0x0000_0000
+    public var TEXT_BEGIN: Int = 0x10000000
 
     fun setTextBegin(i: Int) {
         if (i < 0) {

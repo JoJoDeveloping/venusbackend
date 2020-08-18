@@ -14,9 +14,9 @@ class InterruptConnectionListener: IConnectionListener() {
             32 -> mcause = 1 shl 31
             64 -> mcause = 1L shl 63
         }
-        when(message.slot.toInt()) {
-            44 -> mcause = mcause or 7 // machine timer interrupt
-            else -> mcause = mcause or 11  // machine external interrupt
+        mcause = when(message.slot.toInt()) {
+            44 -> mcause or 7 // machine timer interrupt
+            else -> mcause or 11  // machine external interrupt
         }
         simulatorState.setSReg(SpecialRegisters.MCAUSE.address, mcause)
     }

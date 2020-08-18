@@ -7,13 +7,12 @@ import venusbackend.and
 import venusbackend.simulator.comm.Message
 
 private val readSignal = Signal<Boolean>()
+private var byte: Int? = null
+private var half: Int? = null
+private var word: Int? = null
+private var long: Long? = null
 
 class ReadConnectionListener : IConnectionListener() {
-    var byte: Int? = null
-    var half: Int? = null
-    var word: Int? = null
-    var long: Long? = null
-
 
     suspend fun waitForReadResponse() {
         withTimeout(TimeSpan(10000.0)) {
@@ -62,5 +61,29 @@ class ReadConnectionListener : IConnectionListener() {
             word = null
             long = null
         }
+    }
+
+    fun getByte(): Int? {
+        val tmp = byte
+        byte = null
+        return tmp
+    }
+
+    fun getHalf(): Int? {
+        val tmp = half
+        half = null
+        return tmp
+    }
+
+    fun getWord(): Int? {
+        val tmp = word
+        word = null
+        return tmp
+    }
+
+    fun getLong(): Long? {
+        val tmp = long
+        long = null
+        return tmp
     }
 }

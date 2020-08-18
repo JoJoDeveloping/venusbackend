@@ -7,6 +7,7 @@ import venusbackend.riscv.MemSize
 import venusbackend.simulator.comm.Message
 import venusbackend.simulator.comm.MessageFactory
 import venusbackend.simulator.comm.MotherboardConnection
+import venusbackend.toHex
 
 class MemoryVMB(private val connection: MotherboardConnection) : Memory {
 
@@ -84,7 +85,7 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
      * TODO: Implement so that it really translates the address
      */
     private fun translate(addr: Number): Long {
-        return addr.toLong() or 0x0000_0001_0000_0000 // and 0x0FFFFFFF or 0x100000000 //0000000100000000
+        return addr.toLong()
     }
 
     /**
@@ -110,24 +111,24 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         }
         val listener = connection.getReadListener()
         connection.send(message)
-        listener.waitForReadResponse()
+        try {
+            listener.waitForReadResponse()
+        } catch (e: Exception) {
+            println("Timeout when reading at address: ${toHex(address)}")
+        }
         var tmp: Number? = null
         when (size) {
             MemSize.BYTE -> {
-                tmp = listener.byte
-                listener.byte = null
+                tmp = listener.getByte()
             }
             MemSize.HALF -> {
-                tmp = listener.half
-                listener.half = null
+                tmp = listener.getHalf()
             }
             MemSize.WORD -> {
-                tmp = listener.word
-                listener.word = null
+                tmp = listener.getWord()
             }
             MemSize.LONG -> {
-                tmp = listener.long
-                listener.long = null
+                tmp = listener.getLong()
             }
         }
         if (tmp == null) {

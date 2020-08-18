@@ -6,7 +6,6 @@ import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.net.ws.readBinary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import venusbackend.simulator.SimulatorState
 import venusbackend.simulator.comm.listeners.IConnectionListener
@@ -17,10 +16,10 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
     private val readListener: ReadConnectionListener = ReadConnectionListener()
     private var logger: Logger = Logger("MotherboardConnection Logger")
-    private val interruptMutex = Mutex()
     val context = EmptyCoroutineContext
     private val messageChannel = Channel<Message>(Channel.UNLIMITED)
     var isOn: Boolean = false
+    var isConnected = false
     var webSocketClient: WebSocketClient? = null
     private val connectionSemaphore = Semaphore(1)
 
@@ -49,15 +48,14 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
     override suspend fun establishConnection(host: String, port: Int) {
         println("Establishing connection...")
         val isConnected = connectToVMB(host, port)
-        println("Done!")
         if (!isConnected) {
             println("Could not connect to the motherboard!")
+        } else {
+            this.isConnected = true
+            println("Connected!")
         }
         connectionListeners.add(readListener)
         register()
-        /*signal.addSuspend {
-            dispatchMessage(it)
-        }*/
     }
 
     fun getReadListener(): ReadConnectionListener {

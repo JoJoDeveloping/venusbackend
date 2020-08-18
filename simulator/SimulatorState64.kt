@@ -25,7 +25,7 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table
          */
-        sregs64[SpecialRegisters.MSTATUS.address] = CSR64(8, Privilege.MRW) // mstatus CSR with the mie bit set
+        sregs64[SpecialRegisters.MSTATUS.address] = CSR64(0, Privilege.MRW) // mstatus CSR
         sregs64[SpecialRegisters.MIE.address] = CSR64(0, Privilege.MRW) // mie CSR
         sregs64[SpecialRegisters.MIP.address] = CSR64(0, Privilege.MRW) // mip CSR
         sregs64[SpecialRegisters.MEPC.address] = CSR64(0, Privilege.MRW) // mepc CSR

@@ -20,18 +20,21 @@ import venusbackend.simulator.comm.listeners.InterruptConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
 import kotlin.math.max
+import kotlin.system.exitProcess
 
 /* ktlint-enable no-wildcard-imports */
+
+var connectionToVMB: MotherboardConnection? = null
 
 /** Right now, this is a loose wrapper around SimulatorState
     Eventually, it will support debugging. */
 class Simulator(
-    val linkedProgram: LinkedProgram,
-    val VFS: VirtualFileSystem = VirtualFileSystem("dummy"),
-    var settings: SimulatorSettings = SimulatorSettings(),
-    val state: SimulatorState = SimulatorState32(),
-    val simulatorID: Int = 0,
-    val connection: MotherboardConnection? = null
+        val linkedProgram: LinkedProgram,
+        val VFS: VirtualFileSystem = VirtualFileSystem("dummy"),
+        var settings: SimulatorSettings = SimulatorSettings(),
+        val state: SimulatorState = SimulatorState32(),
+        val simulatorID: Int = 0,
+        private val connection: MotherboardConnection? = null
 ) {
 
     private var cycles = 0
@@ -47,14 +50,12 @@ class Simulator(
     val instOrderMapping = HashMap<Int, Int>()
     val invInstOrderMapping = HashMap<Int, Int>()
     var exitcode: Int? = null
-
     val alloc: Alloc = Alloc(this)
-
-    var connectionToVMB: MotherboardConnection? = null
+    var inSoftwareInterruptHandler = false
 
     init {
         if (this.connection != null) {
-            this.connectionToVMB = this.connection
+            connectionToVMB = this.connection
             this.state.mem = MemoryVMB(connection)
         }
         (state).getReg(1)
@@ -98,6 +99,7 @@ class Simulator(
     }
 
     fun loadBiosIntoMemory(bios: Program, startAddress: Int = MemorySegments.TEXT_BEGIN) {
+        println("This is the start address: ${toHex(startAddress)}")
         var address = startAddress
         for (inst in bios.insts) {
             var mcode = inst[InstructionField.ENTIRE]
@@ -109,8 +111,8 @@ class Simulator(
         }
         MemorySegments.TEXT_BEGIN = address + 1
         state.setMaxPC(address + 1)
-        println("Changed maxpc to: ${state.getMaxPC()}")
-        println("Changed text begin to: ${MemorySegments.TEXT_BEGIN}")
+        println("Changed maxpc to: ${toHex(state.getMaxPC())}")
+        println("Changed text begin to: ${toHex(MemorySegments.TEXT_BEGIN)}")
     }
 
     fun isDone(): Boolean {
@@ -173,7 +175,6 @@ class Simulator(
         val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
         if ((meieBit != 0 && meipBit != 0) || (mtieBit != 0 && mtipBit != 0) || (msieBit != 0 && msipBit != 0)) {
             setSReg(SpecialRegisters.MEPC.address, state.getPC())
-
             val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
             setSReg(SpecialRegisters.MSTATUS.address, ((getSReg(SpecialRegisters.MSTATUS.address) shr 4) shl 4) or last3BitsOfMstatus)
 
@@ -203,7 +204,12 @@ class Simulator(
                 }
                 0 -> {
                     // Direct mode
-                    state.setPC(getSReg(SpecialRegisters.MTVEC.address))
+                    if (msipBit != 0) {
+                        state.setPC(getSReg(SpecialRegisters.MTVEC.address) - 4)
+                        inSoftwareInterruptHandler = true
+                    } else {
+                        state.setPC(getSReg(SpecialRegisters.MTVEC.address))
+                    }
                 }
                 else -> {
                     throw SimulatorError("$mtvec2LSB is not a valid mode. You can only use 01 (vectored mode) or 00 (direct mode)")
@@ -307,7 +313,7 @@ class Simulator(
         } catch (e: Exception) {
             throw SimulatorError("Could not connect to host ${propertyManager.hostname} ${e.message}")
         }
-        this.connectionToVMB = connection
+        connectionToVMB = connection
         this.state.mem = MemoryVMB(connection)
     }
 

@@ -12,7 +12,6 @@ private val semaphore32: Semaphore = Semaphore(1)
 private val context32 = EmptyCoroutineContext
 private val sregs32 = mutableMapOf<Int, SimulatorState32.CSR32>()
 
-
 class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState {
     private val regs32 = Array(32) { 0 }
     private val fregs = Array(32) { Decimal() }
@@ -23,12 +22,12 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table
          */
-        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(KorAtomicInt(8), Privilege.MRW) // mstatus CSR with the mie bit set
+        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(KorAtomicInt(8), Privilege.MRW) // mstatus CSR
         sregs32[SpecialRegisters.MIE.address] = CSR32(KorAtomicInt(0b100010001000), Privilege.MRW) // mie CSR
         sregs32[SpecialRegisters.MIP.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mip CSR
         sregs32[SpecialRegisters.MEPC.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mepc CSR
         sregs32[SpecialRegisters.MCAUSE.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mcause CSR
-        sregs32[SpecialRegisters.MTVEC.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mtvec CSR
+        sregs32[SpecialRegisters.MTVEC.address] = CSR32(KorAtomicInt(0x10000000), Privilege.MRW) // mtvec CSR
     }
 
     override val registerWidth = 32

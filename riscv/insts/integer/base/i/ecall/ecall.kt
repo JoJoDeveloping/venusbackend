@@ -1,8 +1,7 @@
- package venusbackend.riscv.insts.integer.base.i.ecall
+package venusbackend.riscv.insts.integer.base.i.ecall
 
 import venus.Renderer
-import venusbackend.compareTo
-import venusbackend.inc
+import venusbackend.*
 import venusbackend.numbers.QuadWord
 import venusbackend.numbers.toQuadWord
 import venusbackend.riscv.InstructionField
@@ -17,6 +16,7 @@ import venusbackend.riscv.insts.dsl.parsers.DoNothingParser
 import venusbackend.riscv.MemorySegments
 import venusbackend.simulator.FilesHandler
 import venusbackend.simulator.Simulator
+import venusbackend.simulator.SpecialRegisters
 
 val ecall = Instruction(
     // Fixme The long and quadword are only build for a 32 bit system!
@@ -244,16 +244,18 @@ private fun ferror(sim: Simulator) {
     sim.setReg(Registers.a0, a0)
 }
 
-private fun printHex(sim: Simulator) {
+private suspend fun printHex(sim: Simulator) {
     val arg = sim.getReg(11)
     sim.ecallMsg = Renderer.toHex(arg)
     Renderer.printConsole(sim.ecallMsg)
+    raiseSoftwareInterrupt(sim)
 }
 
-private fun printInteger(sim: Simulator) {
+private suspend fun printInteger(sim: Simulator) {
     val arg = sim.getReg(11)
     sim.ecallMsg = arg.toString()
     Renderer.printConsole(sim.ecallMsg)
+    raiseSoftwareInterrupt(sim)
 }
 
 private suspend fun printString(sim: Simulator) {
@@ -261,6 +263,19 @@ private suspend fun printString(sim: Simulator) {
     val s = getString(sim, arg)
     sim.ecallMsg += s
     Renderer.printConsole(s)
+    raiseSoftwareInterrupt(sim)
+}
+
+private suspend fun raiseSoftwareInterrupt(sim: Simulator) {
+    var mcause: Number = 0
+    when(sim.state.registerWidth) { // set interrupt bit
+        32 -> mcause = (1 shl 31) + 1
+        64 -> mcause = (1L shl 63) + 1
+    }
+    sim.setSReg(SpecialRegisters.MCAUSE.address, mcause)
+    val mip = sim.getSReg(SpecialRegisters.MIP.address) or 1 shl 3
+    sim.setSReg(SpecialRegisters.MIP.address, mip)
+    sim.handleMachineInterrupts()
 }
 
 private suspend fun atoi(sim: Simulator) {
