@@ -24,8 +24,6 @@ import kotlin.system.exitProcess
 
 /* ktlint-enable no-wildcard-imports */
 
-var connectionToVMB: MotherboardConnection? = null
-
 /** Right now, this is a loose wrapper around SimulatorState
     Eventually, it will support debugging. */
 class Simulator(
@@ -52,6 +50,10 @@ class Simulator(
     var exitcode: Int? = null
     val alloc: Alloc = Alloc(this)
     var inSoftwareInterruptHandler = false
+
+    companion object {
+        var connectionToVMB: MotherboardConnection? = null
+    }
 
     init {
         if (this.connection != null) {

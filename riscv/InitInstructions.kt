@@ -12,6 +12,7 @@ import venusbackend.riscv.insts.floating.single.s.fsw
 import venusbackend.riscv.insts.integer.base.i.*
 import venusbackend.riscv.insts.integer.base.i.ecall.ecall
 import venusbackend.riscv.insts.integer.base.i.trap.mret
+import venusbackend.riscv.insts.integer.base.i.trap.wfi
 import venusbackend.riscv.insts.integer.base.r.*
 import venusbackend.riscv.insts.integer.base.sb.*
 import venusbackend.riscv.insts.integer.base.s.*
@@ -101,6 +102,7 @@ class InitInstructions {
             divu
 //            divw
             mret
+            wfi
             mul
             mulh
             mulhsu

@@ -21,20 +21,11 @@ class TRTypeImplementation: InstructionImplementation {
         sim.setSReg(SpecialRegisters.MSTATUS.address, mstatusNewValue)
         // mpp bit in mstatus will not be set because currently there's only machine mode
         val newPC = sim.getSReg(SpecialRegisters.MEPC.address)
-        if (sim.state.registerWidth == 32) {
-            if (sim.inSoftwareInterruptHandler) {
-                sim.setPC(newPC.toInt() + 4)
-                sim.inSoftwareInterruptHandler = false
-            } else {
-                sim.setPC(newPC.toInt())
-            }
-        } else if (sim.state.registerWidth == 64) {
-            if (sim.inSoftwareInterruptHandler) {
-                sim.setPC(newPC.toInt() + 4)
-                sim.inSoftwareInterruptHandler = false
-            } else {
-                sim.setPC(newPC.toLong())
-            }
+        if (sim.inSoftwareInterruptHandler) {
+            sim.setPC(newPC.toInt() + mcode.length)
+            sim.inSoftwareInterruptHandler = false
+        } else {
+            sim.setPC(newPC.toInt())
         }
     }
 }

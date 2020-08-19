@@ -6,13 +6,15 @@ import com.soywiz.korio.async.withTimeout
 import venusbackend.and
 import venusbackend.simulator.comm.Message
 
-private val readSignal = Signal<Boolean>()
-private var byte: Int? = null
-private var half: Int? = null
-private var word: Int? = null
-private var long: Long? = null
-
 class ReadConnectionListener : IConnectionListener() {
+
+    companion object {
+        private val readSignal = Signal<Boolean>()
+        private var byte: Int? = null
+        private var half: Int? = null
+        private var word: Int? = null
+        private var long: Long? = null
+    }
 
     suspend fun waitForReadResponse() {
         withTimeout(TimeSpan(10000.0)) {

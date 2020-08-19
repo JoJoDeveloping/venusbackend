@@ -7,10 +7,6 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 import kotlin.coroutines.EmptyCoroutineContext
 
-private val sregs64 = mutableMapOf<Int, SimulatorState64.CSR64>()
-private val semaphore64: Semaphore = Semaphore(1)
-private val context64 = EmptyCoroutineContext
-
 class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState {
     private val regs64 = Array(32) { 0.toLong() }
     private val fregs = Array(32) { Decimal() }
@@ -20,6 +16,12 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
 
     override val registerWidth = 64
     override var cache = CacheHandler(1)
+
+    companion object {
+        private val sregs64 = mutableMapOf<Int, CSR64>()
+        private val semaphore64: Semaphore = Semaphore(1)
+        private val context64 = EmptyCoroutineContext
+    }
 
     init {
         /**

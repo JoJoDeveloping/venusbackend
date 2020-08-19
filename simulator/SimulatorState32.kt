@@ -8,16 +8,17 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 import kotlin.coroutines.EmptyCoroutineContext
 
-private val semaphore32: Semaphore = Semaphore(1)
-private val context32 = EmptyCoroutineContext
-private val sregs32 = mutableMapOf<Int, SimulatorState32.CSR32>()
-
 class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState {
     private val regs32 = Array(32) { 0 }
     private val fregs = Array(32) { Decimal() }
     private var heapEnd = MemorySegments.HEAP_BEGIN
     private var pc: Int = 0
     private var maxpc: Int = MemorySegments.TEXT_BEGIN
+    companion object {
+        private val semaphore32: Semaphore = Semaphore(1)
+        private val context32 = EmptyCoroutineContext
+        private val sregs32 = mutableMapOf<Int, CSR32>()
+    }
     init {
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table

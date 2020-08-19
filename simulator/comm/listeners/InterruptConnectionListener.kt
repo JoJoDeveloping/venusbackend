@@ -1,9 +1,12 @@
 package venusbackend.simulator.comm.listeners
 
+import com.soywiz.korio.async.Signal
 import venusbackend.or
 import venusbackend.simulator.SimulatorState
 import venusbackend.simulator.SpecialRegisters
 import venusbackend.simulator.comm.Message
+
+val simulatorInterruptSignal = Signal<Boolean>()
 
 class InterruptConnectionListener: IConnectionListener() {
 
@@ -19,6 +22,7 @@ class InterruptConnectionListener: IConnectionListener() {
             else -> mcause or 11  // machine external interrupt
         }
         simulatorState.setSReg(SpecialRegisters.MCAUSE.address, mcause)
+        simulatorInterruptSignal(true)
     }
 
 }
