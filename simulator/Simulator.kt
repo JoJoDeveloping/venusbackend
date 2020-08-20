@@ -300,14 +300,14 @@ class Simulator(
         try {
             connection.establishConnection(propertyManager.hostname, propertyManager.port)
             print("Power...")
-            while (!connection.isOn) {
-                val payload = connection.webSocketClient!!.readBinary()
+            while (!MotherboardConnection.isOn) {
+                val payload = MotherboardConnection.webSocketClient!!.readBinary()
                 val message = Message().setup(payload)
                 connection.dispatchMessage(message)
             }
-            connection.connectionListeners.add(LoggingConnectionListener())
-            if (connection.isOn) {
-                connection.connectionListeners.add(InterruptConnectionListener())
+            MotherboardConnection.connectionListeners.add(LoggingConnectionListener())
+            if (MotherboardConnection.isOn) {
+                MotherboardConnection.connectionListeners.add(InterruptConnectionListener())
                 launch(Dispatchers.Default) {
                     connection.watchForMessages()
                 }

@@ -13,15 +13,17 @@ import venusbackend.simulator.comm.listeners.ReadConnectionListener
 import kotlin.coroutines.EmptyCoroutineContext
 
 class MotherboardConnection(private val startAddress: Long, private val size: Int, private val simulatorState: SimulatorState) : IConnection {
-    val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
-    private val readListener: ReadConnectionListener = ReadConnectionListener()
-    private var logger: Logger = Logger("MotherboardConnection Logger")
-    val context = EmptyCoroutineContext
-    private val messageChannel = Channel<Message>(Channel.UNLIMITED)
-    var isOn: Boolean = false
-    var isConnected = false
-    var webSocketClient: WebSocketClient? = null
-    private val connectionSemaphore = Semaphore(1)
+    companion object {
+        val connectionListeners: MutableList<IConnectionListener> = mutableListOf()
+        private val readListener: ReadConnectionListener = ReadConnectionListener()
+        private var logger: Logger = Logger("MotherboardConnection Logger")
+        val context = EmptyCoroutineContext
+        private val messageChannel = Channel<Message>(Channel.UNLIMITED)
+        var isOn: Boolean = false
+        var isConnected = false
+        var webSocketClient: WebSocketClient? = null
+        private val connectionSemaphore = Semaphore(1)
+    }
 
     init {
         logger.output = object : Logger.Output {
@@ -47,11 +49,11 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
 
     override suspend fun establishConnection(host: String, port: Int) {
         println("Establishing connection...")
-        val isConnected = connectToVMB(host, port)
-        if (!isConnected) {
+        val connected = connectToVMB(host, port)
+        if (!connected) {
             println("Could not connect to the motherboard!")
         } else {
-            this.isConnected = true
+            isConnected = true
             println("Connected!")
         }
         connectionListeners.add(readListener)

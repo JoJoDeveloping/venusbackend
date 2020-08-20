@@ -12,12 +12,12 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
     private val regs32 = Array(32) { 0 }
     private val fregs = Array(32) { Decimal() }
     private var heapEnd = MemorySegments.HEAP_BEGIN
-    private var pc: Int = 0
-    private var maxpc: Int = MemorySegments.TEXT_BEGIN
     companion object {
         private val semaphore32: Semaphore = Semaphore(1)
         private val context32 = EmptyCoroutineContext
         private val sregs32 = mutableMapOf<Int, CSR32>()
+        private var pc: Int = 0
+        private var maxpc: Int = MemorySegments.TEXT_BEGIN
     }
     init {
         /**

@@ -267,13 +267,16 @@ private suspend fun printString(sim: Simulator) {
 }
 
 private suspend fun raiseSoftwareInterrupt(sim: Simulator) {
+    if (Simulator.connectionToVMB == null) {
+        return
+    }
     var mcause: Number = 0
     when(sim.state.registerWidth) { // set interrupt bit
         32 -> mcause = (1 shl 31) + 1
         64 -> mcause = (1L shl 63) + 1
     }
     sim.setSReg(SpecialRegisters.MCAUSE.address, mcause)
-    val mip = sim.getSReg(SpecialRegisters.MIP.address) or 1 shl 3
+    val mip = sim.getSReg(SpecialRegisters.MIP.address) or (1 shl 3)
     sim.setSReg(SpecialRegisters.MIP.address, mip)
     sim.handleMachineInterrupts()
 }
