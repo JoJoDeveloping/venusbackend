@@ -565,10 +565,14 @@ class Simulator(
     }
 
     suspend fun storeHalfWord(addr: Number, value: Number) {
-        preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        }
         state.mem.storeHalfWord(addr, value)
-        postInstruction.add(MemoryDiff(addr, loadWord(addr)))
-        this.storeTextOverrideCheck(addr, value, MemSize.HALF)
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            postInstruction.add(MemoryDiff(addr, loadWord(addr)))
+            this.storeTextOverrideCheck(addr, value, MemSize.HALF)
+        }
     }
     suspend fun storeHalfWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.HALF.size != 0) {
@@ -585,10 +589,14 @@ class Simulator(
     }
 
     suspend fun storeWord(addr: Number, value: Number) {
-        preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        }
         state.mem.storeWord(addr, value)
-        postInstruction.add(MemoryDiff(addr, loadWord(addr)))
-        this.storeTextOverrideCheck(addr, value, MemSize.WORD)
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            postInstruction.add(MemoryDiff(addr, loadWord(addr)))
+            this.storeTextOverrideCheck(addr, value, MemSize.WORD)
+        }
     }
     suspend fun storeWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.WORD.size != 0) {
@@ -605,10 +613,14 @@ class Simulator(
     }
 
     suspend fun storeLong(addr: Number, value: Number) {
-        preInstruction.add(MemoryDiff(addr, loadLong(addr)))
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            preInstruction.add(MemoryDiff(addr, loadLong(addr)))
+        }
         state.mem.storeLong(addr, value)
-        postInstruction.add(MemoryDiff(addr, loadLong(addr)))
-        this.storeTextOverrideCheck(addr, value, MemSize.LONG)
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            postInstruction.add(MemoryDiff(addr, loadLong(addr)))
+            this.storeTextOverrideCheck(addr, value, MemSize.LONG)
+        }
     }
     suspend fun storeLongwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.LONG.size != 0) {
