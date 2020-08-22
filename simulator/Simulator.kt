@@ -100,7 +100,7 @@ class Simulator(
 //        breakpoints = Array(linkedProgram.prog.insts.size, { false })
     }
 
-    fun loadBiosIntoMemory(bios: Program, startAddress: Int = MemorySegments.BIOS_BEGIN) {
+    fun loadBiosIntoMemory(bios: Program, startAddress: Int = MemorySegments.TEXT_BEGIN) {
         println("This is the start address: ${toHex(startAddress)}")
         var address = startAddress
         for (inst in bios.insts) {
@@ -111,10 +111,10 @@ class Simulator(
                 address++
             }
         }
-        //MemorySegments.TEXT_BEGIN = address
-        //state.setMaxPC(address + 1)
-        //println("Changed maxpc to: ${toHex(state.getMaxPC())}")
-        //println("Changed text begin to: ${toHex(MemorySegments.TEXT_BEGIN)}")
+        MemorySegments.TEXT_BEGIN = address
+        state.setMaxPC(address)
+        println("Changed maxpc to: ${toHex(state.getMaxPC())}")
+        println("Changed text begin to: ${toHex(MemorySegments.TEXT_BEGIN)}")
     }
 
     fun isDone(): Boolean {
@@ -540,10 +540,14 @@ class Simulator(
     }
 
     suspend fun storeByte(addr: Number, value: Number) {
-        preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            preInstruction.add(MemoryDiff(addr, loadWord(addr)))
+        }
         state.mem.storeByte(addr, value)
-        postInstruction.add(MemoryDiff(addr, loadWord(addr)))
-        this.storeTextOverrideCheck(addr, value, MemSize.BYTE)
+        if (!MotherboardConnection.isConnected) { // this was added to spare us some additional memory accesses
+            postInstruction.add(MemoryDiff(addr, loadWord(addr)))
+            this.storeTextOverrideCheck(addr, value, MemSize.BYTE)
+        }
     }
     suspend fun storeBytewCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.BYTE.size != 0) {
