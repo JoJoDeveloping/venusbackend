@@ -27,11 +27,11 @@ class Message {
         }
         if (!hasTimeStamp() && hasAddress()) {
             readAddressFromByte(copyOfRange(4, 11, payload))
-            println("1. Response from address: ${toHex(address)}")
+            // println("1. Response from address: ${toHex(address)}")
         }
         if (hasTimeStamp() && hasAddress()) {
             readAddressFromByte(copyOfRange(5, 12, payload))
-            println("2. Response from address: ${toHex(address)}")
+            // println("2. Response from address: ${toHex(address)}")
         }
         if (hasPayload() && !hasTimeStamp() && !hasAddress()) {
             readPayloadFromArray(copyOfRange(4, payload.size - 1, payload))
