@@ -69,6 +69,7 @@ class Simulator(
             i++
             var mcode = inst[InstructionField.ENTIRE]
             for (j in 0 until inst.length) {
+                //println("Writing at: ${toHex(state.getMaxPC())}")
                 state.mem.storeByte(state.getMaxPC(), mcode and 0xFF)
                 mcode = mcode shr 8
                 state.incMaxPC(1)
@@ -83,7 +84,7 @@ class Simulator(
 
         state.setHeapEnd(max(state.getHeapEnd().toInt(), dataOffset))
 
-        setPC(linkedProgram.startPC ?: MemorySegments.TEXT_BEGIN)
+        setPC(MemorySegments.BIOS_BEGIN)
         if (settings.setRegesOnInit) {
             state.setReg(Registers.sp, MemorySegments.STACK_BEGIN)
 //            state.setReg(Registers.fp, MemorySegments.STACK_BEGIN)

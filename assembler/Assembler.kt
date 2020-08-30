@@ -43,7 +43,7 @@ object Assembler {
         var passTwoOutput = AssemblerPassTwo(passOneProg, talInstructions).run()
         if (passTwoOutput.prog.textSize + MemorySegments.TEXT_BEGIN > MemorySegments.STATIC_BEGIN) {
             try {
-                MemorySegments.setTextBegin(MemorySegments.STATIC_BEGIN - passOneProg.textSize)
+                //MemorySegments.setTextBegin(MemorySegments.STATIC_BEGIN - passOneProg.textSize)
                 Renderer.updateText()
                 val pone = AssemblerPassOne(text, name, abspath).run()
                 passOneProg = pone.prog

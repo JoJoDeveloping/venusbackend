@@ -84,6 +84,7 @@ class InitInstructions {
             blt
             bltu
             bne
+            csrrs
             auipc
             lui
             jal
