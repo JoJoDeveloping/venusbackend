@@ -20,7 +20,6 @@ import venusbackend.simulator.comm.listeners.InterruptConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
 import kotlin.math.max
-import kotlin.system.exitProcess
 
 /* ktlint-enable no-wildcard-imports */
 
