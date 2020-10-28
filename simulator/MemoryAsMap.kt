@@ -6,7 +6,7 @@ import venusbackend.shr
 /**
  * A class representing a computer's memory.
  */
-class MemoryMap : Memory {
+class MemoryAsMap : Memory {
     /**
      * A hashmap which maps addresses to the value stored at that place in memory.
      *

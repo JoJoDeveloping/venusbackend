@@ -4,7 +4,7 @@ import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 
-class SimulatorState16(override var mem: Memory = MemoryMap()) : SimulatorState {
+class SimulatorState16(override var mem: Memory = MemoryAsMap()) : SimulatorState {
     /* Register 32 is the special register. */
     private val regs16 = Array(33) { 0.toShort() }
     private val fregs = Array(33) { Decimal() }

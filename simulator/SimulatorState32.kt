@@ -8,7 +8,7 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 import kotlin.coroutines.EmptyCoroutineContext
 
-class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState {
+class SimulatorState32(override var mem: Memory = MemoryAsMap()) : SimulatorState {
     private val regs32 = Array(32) { 0 }
     private val fregs = Array(32) { Decimal() }
     private var heapEnd = MemorySegments.HEAP_BEGIN
@@ -23,12 +23,14 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table
          */
-        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(KorAtomicInt(8), Privilege.MRW) // mstatus CSR
-        sregs32[SpecialRegisters.MIE.address] = CSR32(KorAtomicInt(0b100010001000), Privilege.MRW) // mie CSR
-        sregs32[SpecialRegisters.MIP.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mip CSR
-        sregs32[SpecialRegisters.MEPC.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mepc CSR
-        sregs32[SpecialRegisters.MCAUSE.address] = CSR32(KorAtomicInt(0), Privilege.MRW) // mcause CSR
-        sregs32[SpecialRegisters.MTVEC.address] = CSR32(KorAtomicInt(0x10000000), Privilege.MRW) // mtvec CSR
+        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mstatus CSR
+        sregs32[SpecialRegisters.MIE.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mie CSR
+        sregs32[SpecialRegisters.MIP.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mip CSR
+        sregs32[SpecialRegisters.MEPC.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mepc CSR
+        sregs32[SpecialRegisters.MCAUSE.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mcause CSR
+        sregs32[SpecialRegisters.MTVEC.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mtvec CSR
+        sregs32[SpecialRegisters.MTIME.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW)
+        sregs32[SpecialRegisters.MTIMECMP.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW)
     }
 
     override val registerWidth = 32
@@ -70,7 +72,7 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
 
     override suspend fun setSReg(i: Int, v: Number) {
         semaphore32.acquire()
-        if (sregs32[i]!!.privilege == Privilege.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
+        if (sregs32[i]!!.specialRegisterRights == SpecialRegisterRights.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
             withContext(context32) {
                 sregs32[i]!!.content.value = v.toInt()
             }
@@ -93,5 +95,5 @@ class SimulatorState32(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun reset() {
         this.cache.reset()
     }
-    class CSR32(var content: KorAtomicInt, val privilege: Privilege)
+    private data class CSR32(var content: KorAtomicInt, val specialRegisterRights: SpecialRegisterRights)
 }

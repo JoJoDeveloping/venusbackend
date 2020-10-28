@@ -1,5 +1,7 @@
 package venusbackend.simulator
 
+import com.soywiz.klock.DateTime
+import com.soywiz.klock.until
 import com.soywiz.korio.async.launch
 import kotlinx.coroutines.Dispatchers
 import venusbackend.and
@@ -10,6 +12,9 @@ import venusbackend.simulator.comm.MotherboardConnection
 import venusbackend.toHex
 
 class MemoryVMB(private val connection: MotherboardConnection) : Memory {
+
+    var numberOfReads = 0L
+    var averageTimeOfReads = 0.0
 
     /**
      * It "removes" a byte by zero-ing it.
@@ -95,6 +100,8 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
      * @return the data at the given address
      */
     private suspend fun read(address: Number, size: MemSize): Number {
+        numberOfReads++
+        val start = DateTime.now()
         val translatedAddress = translate(address)
         var message: Message? = null
         when (size) {
@@ -134,6 +141,9 @@ class MemoryVMB(private val connection: MotherboardConnection) : Memory {
         if (tmp == null) {
             throw SimulatorError("The motherboard didn't answer in time! Please check the connection to the motherboard!")
         }
+        val stop = DateTime.now()
+        val timeToRunARead = (start until stop).duration.milliseconds
+        averageTimeOfReads += ((timeToRunARead - averageTimeOfReads) / numberOfReads)
         return tmp
     }
 }

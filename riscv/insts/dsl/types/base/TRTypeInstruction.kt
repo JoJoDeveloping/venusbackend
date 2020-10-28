@@ -14,7 +14,7 @@ class TRTypeInstruction(
 ) : Instruction(
         name = name,
         parser = DoNothingParser,
-        disasm = RawDisassembler{"mret"},
+        disasm = RawDisassembler{name},
         format = TRTypeFormat(opcode, funct12),
         impl16 = NoImplementation,
         impl32 = TRTypeImplementation(),

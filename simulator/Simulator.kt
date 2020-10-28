@@ -2,9 +2,11 @@ package venusbackend.simulator
 
 /* ktlint-disable no-wildcard-imports */
 
+import com.soywiz.klock.measureTimeWithResult
 import com.soywiz.korio.async.launch
 import com.soywiz.korio.net.ws.readBinary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import venus.Renderer
 import venus.vfs.VirtualFileSystem
 import venusbackend.*
@@ -19,6 +21,7 @@ import venusbackend.simulator.comm.PropertyManager
 import venusbackend.simulator.comm.listeners.InterruptConnectionListener
 import venusbackend.simulator.comm.listeners.LoggingConnectionListener
 import venusbackend.simulator.diffs.*
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -31,7 +34,8 @@ class Simulator(
         var settings: SimulatorSettings = SimulatorSettings(),
         val state: SimulatorState = SimulatorState32(),
         val simulatorID: Int = 0,
-        private val connection: MotherboardConnection? = null
+        private val connection: MotherboardConnection? = null,
+        var timerFrequency: Long = 5
 ) {
 
     private var cycles = 0
@@ -143,8 +147,19 @@ class Simulator(
     }
 
     suspend fun run() {
-        while (!isDone()) {
-            step()
+        if (this.state.mem !is MemoryVMB) {
+            println("setting to text begin")
+            setPC(MemorySegments.TEXT_BEGIN)
+        }
+        val result = measureTimeWithResult {
+            while (!isDone()) {
+                step()
+            }
+        }
+        println("Time to run: ${result.time.milliseconds}")
+        if (this.state.mem is MemoryVMB) {
+            println("Number of reads: ${(state.mem as MemoryVMB).numberOfReads}")
+            println("Average time per read: ${(state.mem as MemoryVMB).averageTimeOfReads}")
         }
     }
 
@@ -176,10 +191,7 @@ class Simulator(
         val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
         val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
         if ((meieBit != 0 && meipBit != 0) || (mtieBit != 0 && mtipBit != 0) || (msieBit != 0 && msipBit != 0)) {
-            setSReg(SpecialRegisters.MEPC.address, state.getPC())
-            val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
-            setSReg(SpecialRegisters.MSTATUS.address, ((getSReg(SpecialRegisters.MSTATUS.address) shr 4) shl 4) or last3BitsOfMstatus)
-
+            // clear pending bit(s)
             if (meipBit != 0) {
                 // clear meipBit
                 val newMip = getSReg(SpecialRegisters.MIP.address) and 0b011111111111 // change this mask if you add custom interrupt bit(s)
@@ -195,6 +207,10 @@ class Simulator(
                 val newMip = getSReg(SpecialRegisters.MIP.address) and 0b111111110111 // change this mask if you add custom interrupt bit(s)
                 setSReg(SpecialRegisters.MIP.address, newMip)
             }
+
+            // Save current pc in mepc
+            setSReg(SpecialRegisters.MEPC.address, state.getPC())
+
             // we don't need to set mpp bit in mstatus because we only have machine mode
             val maskForMpieBit = mieBit shl 4
             setSReg(SpecialRegisters.MSTATUS.address, getSReg(SpecialRegisters.MSTATUS.address) or maskForMpieBit)
@@ -217,6 +233,9 @@ class Simulator(
                     throw SimulatorError("$mtvec2LSB is not a valid mode. You can only use 01 (vectored mode) or 00 (direct mode)")
                 }
             }
+            // disable interrupts
+            val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
+            setSReg(SpecialRegisters.MSTATUS.address, ((getSReg(SpecialRegisters.MSTATUS.address) shr 4) shl 4) or last3BitsOfMstatus)
         }
     }
 
@@ -290,6 +309,34 @@ class Simulator(
         }
     }
 
+    suspend fun runTimer() {
+        var counter = 0L
+        while (true) {
+            if (state.registerWidth == 32) {
+                if (counter == Int.MAX_VALUE.toLong()) {
+                    counter = 0
+                }
+            } else if (state.registerWidth == 64) {
+                if (counter == Long.MAX_VALUE) {
+                    counter = 0
+                }
+            }
+            delay(timerFrequency)
+            counter++
+            state.setSReg(SpecialRegisters.MTIME.address, counter)
+            // check if cmp register is bigger than timer
+            val cmp = state.getSReg(SpecialRegisters.MTIMECMP.address)
+            if ((cmp != 0) && (cmp <= counter)) {
+                val msg = Message()
+                msg.slot = 7 // machine timer interrupt
+                for(l in connection!!.getListeners()) {
+                    l.interruptRequest(msg, state)
+                }
+                state.setSReg(SpecialRegisters.MTIMECMP.address, 0)
+            }
+        }
+    }
+
     suspend fun connectToMotherboard(host: String? = null, port: Int? = null) {
         val propertyManager = PropertyManager()
         if (host != null && port != null) {
@@ -317,6 +364,9 @@ class Simulator(
         }
         connectionToVMB = connection
         this.state.mem = MemoryVMB(connection)
+        launch(EmptyCoroutineContext) {
+            runTimer()
+        }
     }
 
     suspend fun addArg(arg: String) {

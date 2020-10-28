@@ -26,7 +26,7 @@ interface SimulatorState {
     fun reset()
 }
 
-enum class Privilege {
+enum class SpecialRegisterRights {
     URW, URO, SRW, MRO, MRW, DRW
 }
 
@@ -36,5 +36,7 @@ enum class SpecialRegisters(val address: Int, val regName: String) {
     MTVEC(0x305, "mtvec"),
     MEPC(0x341, "mepc"),
     MCAUSE(0x342, "mcause"),
-    MIP(0x344, "mip")
+    MIP(0x344, "mip"),
+    MTIME(0x701, "mtime"),
+    MTIMECMP(0x321, "mtimecmp")
 }

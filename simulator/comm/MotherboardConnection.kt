@@ -64,6 +64,10 @@ class MotherboardConnection(private val startAddress: Long, private val size: In
         return readListener
     }
 
+    fun getListeners(): MutableList<IConnectionListener> {
+        return connectionListeners
+    }
+
     suspend fun watchForMessages() {
         launch(Dispatchers.Default){
             dispatchAll()

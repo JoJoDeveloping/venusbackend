@@ -1,5 +1,6 @@
 package venusbackend.simulator
 
+import com.soywiz.korio.concurrent.atomic.KorAtomicInt
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import venusbackend.riscv.MemorySegments
@@ -7,7 +8,7 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 import kotlin.coroutines.EmptyCoroutineContext
 
-class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState {
+class SimulatorState64(override var mem: Memory = MemoryAsMap()) : SimulatorState {
     private val regs64 = Array(32) { 0.toLong() }
     private val fregs = Array(32) { Decimal() }
     private var pc: Long = 0
@@ -27,12 +28,14 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table
          */
-        sregs64[SpecialRegisters.MSTATUS.address] = CSR64(0, Privilege.MRW) // mstatus CSR
-        sregs64[SpecialRegisters.MIE.address] = CSR64(0, Privilege.MRW) // mie CSR
-        sregs64[SpecialRegisters.MIP.address] = CSR64(0, Privilege.MRW) // mip CSR
-        sregs64[SpecialRegisters.MEPC.address] = CSR64(0, Privilege.MRW) // mepc CSR
-        sregs64[SpecialRegisters.MCAUSE.address] = CSR64(0, Privilege.MRW) // mcause CSR
-        sregs64[SpecialRegisters.MTVEC.address] = CSR64(0, Privilege.MRW) // mtvec CSR
+        sregs64[SpecialRegisters.MSTATUS.address] = CSR64(0, SpecialRegisterRights.MRW) // mstatus CSR
+        sregs64[SpecialRegisters.MIE.address] = CSR64(0, SpecialRegisterRights.MRW) // mie CSR
+        sregs64[SpecialRegisters.MIP.address] = CSR64(0, SpecialRegisterRights.MRW) // mip CSR
+        sregs64[SpecialRegisters.MEPC.address] = CSR64(0, SpecialRegisterRights.MRW) // mepc CSR
+        sregs64[SpecialRegisters.MCAUSE.address] = CSR64(0, SpecialRegisterRights.MRW) // mcause CSR
+        sregs64[SpecialRegisters.MTVEC.address] = CSR64(0, SpecialRegisterRights.MRW) // mtvec CSR
+        sregs64[SpecialRegisters.MTIME.address] = CSR64(0, SpecialRegisterRights.MRW)
+        sregs64[SpecialRegisters.MTIMECMP.address] = CSR64(0, SpecialRegisterRights.MRW)
     }
 
     override fun setCacheHandler(ch: CacheHandler) {
@@ -72,7 +75,7 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
 
     override suspend fun setSReg(i: Int, v: Number) {
         semaphore64.acquire()
-        if (sregs64[i]!!.privilege == Privilege.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
+        if (sregs64[i]!!.specialRegisterRights == SpecialRegisterRights.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
             withContext(context64) {
                 sregs64[i]!!.content = v.toLong()
             }
@@ -95,6 +98,5 @@ class SimulatorState64(override var mem: Memory = MemoryMap()) : SimulatorState 
     override fun reset() {
         this.cache.reset()
     }
-    class CSR64(var content: Long, val privilege: Privilege)
-    class SpecialRegisterSetter64(val i: Int, val v: Number)
+    private data class CSR64(var content: Long, val specialRegisterRights: SpecialRegisterRights)
 }
