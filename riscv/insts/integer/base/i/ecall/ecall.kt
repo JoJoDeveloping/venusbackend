@@ -1,4 +1,4 @@
- package venusbackend.riscv.insts.integer.base.i.ecall
+package venusbackend.riscv.insts.integer.base.i.ecall
 
 import venus.Renderer
 import venusbackend.*
@@ -19,6 +19,7 @@ import venusbackend.simulator.Simulator
 import kotlin.js.JSON
 import kotlin.js.Json
 import kotlin.js.json
+import venusbackend.simulator.SpecialRegisters
 
 val ecall = Instruction(
     // Fixme The long and quadword are only build for a 32 bit system!
@@ -318,6 +319,17 @@ private fun printString(sim: Simulator) {
     val s = getString(sim, arg)
     sim.ecallMsg += s
     Renderer.printConsole(s)
+}
+
+private suspend fun raiseSoftwareInterrupt(sim: Simulator) {
+    if (Simulator.connectionToVMB == null) {
+        return
+    }
+    val mcause: Number = sim.getReg(10)
+    sim.setSReg(SpecialRegisters.MCAUSE.address, mcause)
+    val mip = sim.getSReg(SpecialRegisters.MIP.address) or (1 shl 3)
+    sim.setSReg(SpecialRegisters.MIP.address, mip)
+    sim.handleMachineInterrupts()
 }
 
 private fun atoi(sim: Simulator) {

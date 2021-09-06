@@ -2,6 +2,11 @@ package venusbackend.simulator
 
 /* ktlint-disable no-wildcard-imports */
 
+import com.soywiz.klock.measureTimeWithResult
+import com.soywiz.korio.async.launch
+import com.soywiz.korio.net.ws.readBinary
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import venus.Renderer
 import venus.vfs.VirtualFileSystem
 import venusbackend.*
@@ -12,6 +17,13 @@ import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.riscv.insts.integer.base.i.ecall.Alloc
 import venusbackend.simulator.diffs.*
 import venusbackend.simulator.plugins.SimulatorPlugin
+import venusbackend.simulator.comm.Message
+import venusbackend.simulator.comm.MotherboardConnection
+import venusbackend.simulator.comm.PropertyManager
+import venusbackend.simulator.comm.listeners.InterruptConnectionListener
+import venusbackend.simulator.comm.listeners.LoggingConnectionListener
+import venusbackend.simulator.diffs.*
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.max
 
 /* ktlint-enable no-wildcard-imports */
@@ -23,7 +35,9 @@ open class Simulator(
     open val VFS: VirtualFileSystem = VirtualFileSystem("dummy"),
     open var settings: SimulatorSettings = SimulatorSettings(),
     open val state: SimulatorState = SimulatorState32(),
-    open val simulatorID: Int = 0
+    open val simulatorID: Int = 0,
+    private val connection: MotherboardConnection? = null,
+    var timerFrequency: Long = 5
 ) {
 
     private var ECallReceiver: ((String) -> String)? = null
@@ -31,7 +45,7 @@ open class Simulator(
     val history = History(settings.max_histroy)
     val preInstruction = ArrayList<Diff>()
     val postInstruction = ArrayList<Diff>()
-//    private val breakpoints: Array<Boolean>
+    //private val breakpoints: Array<Boolean>
     private val breakpoints = HashSet<Int>()
     var args = ArrayList<String>()
     var ebreak = false
@@ -40,14 +54,22 @@ open class Simulator(
     val instOrderMapping = HashMap<Int, Int>()
     val invInstOrderMapping = HashMap<Int, Int>()
     var exitcode: Int? = null
-
     val alloc: Alloc = Alloc(this)
-
     val plugins = LinkedHashMap<String, SimulatorPlugin>()
+    var inSoftwareInterruptHandler = false
+
+    companion object {
+        var connectionToVMB: MotherboardConnection? = null
+    }
 
     init {
+        if (this.connection != null) {
+            connectionToVMB = this.connection
+            this.state.mem = MemoryVMB(connection)
+        }
         (state).getReg(1)
         var i = 0
+        state.setMaxPC(MemorySegments.TEXT_BEGIN)
         for (inst in linkedProgram.prog.insts) {
             instOrderMapping[i] = state.getMaxPC().toInt()
             invInstOrderMapping[state.getMaxPC().toInt()] = i
@@ -68,7 +90,7 @@ open class Simulator(
 
         state.setHeapEnd(max(state.getHeapEnd().toInt(), dataOffset))
 
-        setPC(linkedProgram.startPC ?: MemorySegments.TEXT_BEGIN)
+        setPC(MemorySegments.BIOS_BEGIN) // TODO: check this ? linkedProgram.startPC ?: MemorySegments.TEXT_BEGIN
         if (settings.setRegesOnInit) {
             state.setReg(Registers.sp, MemorySegments.STACK_BEGIN)
 //            state.setReg(Registers.fp, MemorySegments.STACK_BEGIN)
@@ -121,6 +143,21 @@ open class Simulator(
     fun setHistoryLimit(limit: Int) {
         this.settings.max_histroy = limit
         this.history.limit = limit
+    fun loadBiosIntoMemory(bios: Program, startAddress: Int = MemorySegments.TEXT_BEGIN) {
+        println("This is the start address: ${toHex(startAddress)}")
+        var address = startAddress
+        for (inst in bios.insts) {
+            var mcode = inst[InstructionField.ENTIRE]
+            for (j in 0 until inst.length) {
+                state.mem.storeByte(address, mcode and 0xFF)
+                mcode = mcode shr 8
+                address++
+            }
+        }
+        MemorySegments.TEXT_BEGIN = address
+        state.setMaxPC(address)
+        println("Changed maxpc to: ${toHex(state.getMaxPC())}")
+        println("Changed text begin to: ${toHex(MemorySegments.TEXT_BEGIN)}")
     }
 
     fun isDone(): Boolean {
@@ -184,7 +221,103 @@ open class Simulator(
         return diffs
     }
 
-    open fun step(): List<Diff> {
+    
+    suspend fun run() {
+        if (this.state.mem !is MemoryVMB) {
+            println("setting to text begin")
+            setPC(MemorySegments.TEXT_BEGIN)
+        }
+        val result = measureTimeWithResult {
+            while (!isDone()) {
+                step()
+            }
+        }
+        println("Time to run: ${result.time.milliseconds}")
+        if (this.state.mem is MemoryVMB) {
+            println("Number of reads: ${(state.mem as MemoryVMB).numberOfReads}")
+            println("Average time per read: ${(state.mem as MemoryVMB).averageTimeOfReads}")
+        }
+    }
+
+    suspend fun runToBreakpoint() {
+        if (!isDone()) {
+            // We need to step past a breakpoint.
+            step()
+        }
+        while (!isDone() && !atBreakpoint()) {
+            step()
+        }
+    }
+
+    suspend fun handleMachineInterrupts() {
+        val mstatus = getSReg(SpecialRegisters.MSTATUS.address)
+        val mieBit = mstatus and 0x8
+        if (mieBit == 0) { // Interrupts are disabled
+            return
+        }
+        val mie = getSReg(SpecialRegisters.MIE.address)
+        if (mie == 0) { // all interrupts are disabled
+            return
+        }
+        val mip = getSReg(SpecialRegisters.MIP.address)
+        val meieBit = mie and 0x800 shr 11 // Machine external interrupt enable bit
+        val meipBit = mip and 0x800 shr 11 // Machine external interrupt pending bit
+        val mtieBit = mie and 0x80 shr 7   // Machine timer interrupt enable bit
+        val mtipBit = mip and 0x80 shr 7   // Machine timer interrupt pending bit
+        val msieBit = mie and 0x8 shr 3    // Machine software interrupt enable bit
+        val msipBit = mip and 0x8 shr 3    // Machine software interrupt pending bit
+        if ((meieBit != 0 && meipBit != 0) || (mtieBit != 0 && mtipBit != 0) || (msieBit != 0 && msipBit != 0)) {
+            // clear pending bit(s)
+            if (meipBit != 0) {
+                // clear meipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b011111111111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+            if (mtipBit != 0) {
+                // clear mtipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b111101111111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+            if (msipBit != 0) {
+                // clear msipBit
+                val newMip = getSReg(SpecialRegisters.MIP.address) and 0b111111110111 // change this mask if you add custom interrupt bit(s)
+                setSReg(SpecialRegisters.MIP.address, newMip)
+            }
+
+            // Save current pc in mepc
+            setSReg(SpecialRegisters.MEPC.address, state.getPC())
+
+            // we don't need to set mpp bit in mstatus because we only have machine mode
+            val maskForMpieBit = mieBit shl 4
+            setSReg(SpecialRegisters.MSTATUS.address, getSReg(SpecialRegisters.MSTATUS.address) or maskForMpieBit)
+            val mtvec = getSReg(SpecialRegisters.MTVEC.address)
+            when (val mtvec2LSB = mtvec and 0x3) {
+                1 -> {
+                    // Vectored mode
+                    state.setPC(getSReg(SpecialRegisters.MTVEC.address) + 4 * getSReg(SpecialRegisters.MCAUSE.address))
+                }
+                0 -> {
+                    // Direct mode
+                    if (msipBit != 0) {
+                        state.setPC(getSReg(SpecialRegisters.MTVEC.address) - 4)
+                        inSoftwareInterruptHandler = true
+                    } else {
+                        state.setPC(getSReg(SpecialRegisters.MTVEC.address))
+                    }
+                }
+                else -> {
+                    throw SimulatorError("$mtvec2LSB is not a valid mode. You can only use 01 (vectored mode) or 00 (direct mode)")
+                }
+            }
+            // disable interrupts
+            val last3BitsOfMstatus = getSReg(SpecialRegisters.MSTATUS.address) and 0x7
+            setSReg(SpecialRegisters.MSTATUS.address, ((getSReg(SpecialRegisters.MSTATUS.address) shr 4) shl 4) or last3BitsOfMstatus)
+        }
+    }
+
+    //open fun step(): List<Diff> {
+    suspend fun step(): List<Diff> {
+        handleMachineInterrupts()
         if (settings.maxSteps >= 0 && cycles >= settings.maxSteps) {
             throw ExceededAllowedCyclesError("Ran for more than the max allowed steps (${settings.maxSteps})!")
         }
@@ -358,6 +491,10 @@ open class Simulator(
         state.setReg(id, v)
         postInstruction.add(RegisterDiff(id, getReg(id)))
     }
+
+    suspend fun getSReg(id:Int) = state.getSReg(id)
+
+    suspend fun setSReg(id: Int, v: Number) = state.setSReg(id, v)
 
     fun setRegNoUndo(id: Int, v: Number) {
         state.setReg(id, v)
@@ -640,6 +777,7 @@ open class Simulator(
         }
         return destaddr
     }
+}
 
 //    fun dump(sim: Simulator): CoreDump {
 //        val d = HashMap<String, Any>()
@@ -656,7 +794,7 @@ open class Simulator(
 //        d.put("memory", memory)
 //        return d
 //    }
-}
+
 //
 // data class CoreDump(
 //        var time: String,

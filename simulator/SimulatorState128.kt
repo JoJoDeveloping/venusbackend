@@ -6,7 +6,7 @@ import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
 
-class SimulatorState128 : SimulatorState {
+class SimulatorState128(override var mem: Memory = MemoryAsMap()) : SimulatorState {
     /*Register 32 is the special register.*/
     private val regs128 = Array(33) { QuadWord() }
     private val fregs = Array(33) { Decimal() }
@@ -15,7 +15,6 @@ class SimulatorState128 : SimulatorState {
     private var heapEnd = MemorySegments.HEAP_BEGIN.toQuadWord()
 
     override val registerWidth = 128
-    override var mem = Memory()
     override var cache = CacheHandler(1)
     override fun setCacheHandler(ch: CacheHandler) {
         cache = ch
@@ -42,6 +41,15 @@ class SimulatorState128 : SimulatorState {
     override fun setReg(i: Int, v: Number) { if (i != 0) regs128[i] = v.toQuadWord() }
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
+    override suspend fun getSReg(i: Int): Number {
+        return 0
+        // TODO("Not yet implemented")
+    }
+
+    override suspend fun setSReg(i: Int, v: Number) {
+        // TODO("Not yet implemented")
+    }
+
     override fun getHeapEnd(): Number {
         return heapEnd
     }
