@@ -1,8 +1,8 @@
 package venusbackend.simulator
 
-import com.soywiz.korio.concurrent.atomic.KorAtomicInt
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.withContext
+//import com.soywiz.korio.concurrent.atomic.KorAtomicInt
+//import kotlinx.coroutines.sync.Semaphore
+//import kotlinx.coroutines.withContext
 import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
@@ -20,7 +20,6 @@ class SimulatorState64(override var mem: Memory = MemoryAsMap()) : SimulatorStat
 
     companion object {
         private val sregs64 = mutableMapOf<Int, CSR64>()
-        private val semaphore64: Semaphore = Semaphore(1)
         private val context64 = EmptyCoroutineContext
     }
 
@@ -63,24 +62,15 @@ class SimulatorState64(override var mem: Memory = MemoryAsMap()) : SimulatorStat
     override fun setReg(i: Int, v: Number) { if (i != 0) regs64[i] = v.toLong() }
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
-    override suspend fun getSReg(i: Int): Number {
-        semaphore64.acquire()
-        val result: Long
-        withContext(context64) {
-            result = sregs64[i]!!.content
-        }
-        semaphore64.release()
-        return result
+    override fun getSReg(i: Int): Number {
+        return sregs64[i]!!.content
     }
 
-    override suspend fun setSReg(i: Int, v: Number) {
-        semaphore64.acquire()
+    override fun setSReg(i: Int, v: Number) {
+
         if (sregs64[i]!!.specialRegisterRights == SpecialRegisterRights.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
-            withContext(context64) {
-                sregs64[i]!!.content = v.toLong()
-            }
+            sregs64[i]!!.content = v.toLong()
         }
-        semaphore64.release()
     }
 
     override fun getHeapEnd(): Number {

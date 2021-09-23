@@ -322,9 +322,9 @@ private fun printString(sim: Simulator) {
 }
 
 private suspend fun raiseSoftwareInterrupt(sim: Simulator) {
-    if (Simulator.connectionToVMB == null) {
-        return
-    }
+//    if (Simulator.connectionToVMB == null) {
+//        return
+//    }
     val mcause: Number = sim.getReg(10)
     sim.setSReg(SpecialRegisters.MCAUSE.address, mcause)
     val mip = sim.getSReg(SpecialRegisters.MIP.address) or (1 shl 3)

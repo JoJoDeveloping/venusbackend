@@ -29,7 +29,7 @@ class MemoryAsMap : Memory {
      * @return the byte at that location, or 0 if that location has not been written to
      */
 //    fun loadByte(addr: Number): Int = memory[addr]?.toInt()?.and(0xff) ?: 0
-    override suspend fun loadByte(addr: Number): Int {
+    override fun loadByte(addr: Number): Int {
         val v = memory[addr.toLong()]
         return v?.toInt()?.and(0xff) ?: 0
     }
@@ -41,7 +41,7 @@ class MemoryAsMap : Memory {
      * @return the halfword at that location, or 0 if that location has not been written to
      */
 //    fun loadHalfWord(addr: Number): Int = (loadByte(addr + 1) shl 8) or loadByte(addr)
-    override suspend fun loadHalfWord(addr: Number): Int {
+    override fun loadHalfWord(addr: Number): Int {
         val lsb = loadByte(addr)
         val msbb = loadByte(addr + 1)
         val msb = (msbb shl 8)
@@ -54,7 +54,7 @@ class MemoryAsMap : Memory {
      * @param addr the address to load from
      * @return the word at that location, or 0 if that location has not been written to
      */
-    override suspend fun loadWord(addr: Number): Int = (loadHalfWord(addr + 2) shl 16) or loadHalfWord(addr)
+    override fun loadWord(addr: Number): Int = (loadHalfWord(addr + 2) shl 16) or loadHalfWord(addr)
 
     /**
      * Loads a long from memory
@@ -62,7 +62,7 @@ class MemoryAsMap : Memory {
      * @param addr the address to load from
      * @return the long at that location, or 0 if that location has not been written to
      */
-    override suspend fun loadLong(addr: Number): Long = (loadWord(addr + 4).toLong() shl 32) or loadWord(addr).toLong()
+    override fun loadLong(addr: Number): Long = (loadWord(addr + 4).toLong() shl 32) or loadWord(addr).toLong()
 
     /**
      * Stores a byte in memory, truncating the given Int if necessary

@@ -6,7 +6,6 @@ import venusbackend.riscv.insts.dsl.impls.NoImplementation
 import venusbackend.riscv.insts.dsl.impls.RawImplementation
 import venusbackend.riscv.insts.dsl.parsers.DoNothingParser
 import venusbackend.riscv.insts.dsl.types.Instruction
-import venusbackend.simulator.comm.listeners.simulatorInterruptSignal
 
 val wfi = Instruction(
         name = "wfi",
@@ -16,9 +15,9 @@ val wfi = Instruction(
         impl16 = NoImplementation,
         impl128 = NoImplementation,
         impl32 = RawImplementation {machineCode, simulator ->
-            simulatorInterruptSignal.waitOneBase()
+//            simulatorInterruptSignal.waitOneBase() // TODO: Implement alternative to Signal
         },
         impl64 = RawImplementation{machineCode, simulator ->
-            simulatorInterruptSignal.waitOneBase()
+//            simulatorInterruptSignal.waitOneBase() // TODO: Implement alternative to Signal
         }
 )

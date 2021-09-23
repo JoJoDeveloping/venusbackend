@@ -1,8 +1,9 @@
 package venusbackend.simulator
 
-import com.soywiz.korio.concurrent.atomic.KorAtomicInt
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.withContext
+//import com.soywiz.korio.concurrent.atomic.KorAtomicInt
+//import kotlinx.coroutines.sync.Semaphore
+//import kotlinx.coroutines.withContext
+import venus.Renderer
 import venusbackend.riscv.MemorySegments
 import venusbackend.riscv.insts.floating.Decimal
 import venusbackend.simulator.cache.CacheHandler
@@ -13,8 +14,6 @@ class SimulatorState32(override var mem: Memory = MemoryAsMap()) : SimulatorStat
     private val fregs = Array(32) { Decimal() }
     private var heapEnd = MemorySegments.HEAP_BEGIN
     companion object {
-        private val semaphore32: Semaphore = Semaphore(1)
-        private val context32 = EmptyCoroutineContext
         private val sregs32 = mutableMapOf<Int, CSR32>()
         private var pc: Int = 0
         private var maxpc: Int = MemorySegments.TEXT_BEGIN
@@ -23,14 +22,14 @@ class SimulatorState32(override var mem: Memory = MemoryAsMap()) : SimulatorStat
         /**
          * Add CSRs here. Take the number from the "Currently allocated RISC-V x-level CSR addresses" table
          */
-        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mstatus CSR
-        sregs32[SpecialRegisters.MIE.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mie CSR
-        sregs32[SpecialRegisters.MIP.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mip CSR
-        sregs32[SpecialRegisters.MEPC.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mepc CSR
-        sregs32[SpecialRegisters.MCAUSE.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mcause CSR
-        sregs32[SpecialRegisters.MTVEC.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW) // mtvec CSR
-        sregs32[SpecialRegisters.MTIME.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW)
-        sregs32[SpecialRegisters.MTIMECMP.address] = CSR32(KorAtomicInt(0), SpecialRegisterRights.MRW)
+        sregs32[SpecialRegisters.MSTATUS.address] = CSR32(0, SpecialRegisterRights.MRW) // mstatus CSR
+        sregs32[SpecialRegisters.MIE.address] = CSR32(0, SpecialRegisterRights.MRW) // mie CSR
+        sregs32[SpecialRegisters.MIP.address] = CSR32(0, SpecialRegisterRights.MRW) // mip CSR
+        sregs32[SpecialRegisters.MEPC.address] = CSR32(0, SpecialRegisterRights.MRW) // mepc CSR
+        sregs32[SpecialRegisters.MCAUSE.address] = CSR32(0, SpecialRegisterRights.MRW) // mcause CSR
+        sregs32[SpecialRegisters.MTVEC.address] = CSR32(0, SpecialRegisterRights.MRW) // mtvec CSR
+        sregs32[SpecialRegisters.MTIME.address] = CSR32(0, SpecialRegisterRights.MRW)
+        sregs32[SpecialRegisters.MTIMECMP.address] = CSR32(0, SpecialRegisterRights.MRW)
     }
 
     override val registerWidth = 32
@@ -60,24 +59,12 @@ class SimulatorState32(override var mem: Memory = MemoryAsMap()) : SimulatorStat
     override fun setReg(i: Int, v: Number) { if (i != 0) regs32[i] = v.toInt() }
     override fun getFReg(i: Int) = fregs[i]
     override fun setFReg(i: Int, v: Decimal) { fregs[i] = v }
-    override suspend fun getSReg(i: Int): Number {
-        semaphore32.acquire()
-        val result : Int
-        withContext(context32) {
-            result = sregs32[i]!!.content.value
-        }
-        semaphore32.release()
-        return result
-    }
+    override fun getSReg(i: Int)= sregs32[i]!!.content
 
-    override suspend fun setSReg(i: Int, v: Number) {
-        semaphore32.acquire()
-        if (sregs32[i]!!.specialRegisterRights == SpecialRegisterRights.MRW) { // Checking just machine Read/Write privilege because we only have machine mode
-            withContext(context32) {
-                sregs32[i]!!.content.value = v.toInt()
-            }
+    override fun setSReg(i: Int, v: Number) {
+        if (sregs32[i]!!.specialRegisterRights == SpecialRegisterRights.MRW) { // Checking just machine Read/Write privilege because we only have machine mode. TODO: check rights correctly here
+                sregs32[i]!!.content = v.toInt()
         }
-        semaphore32.release()
     }
 
     override fun getHeapEnd(): Number {
@@ -95,5 +82,5 @@ class SimulatorState32(override var mem: Memory = MemoryAsMap()) : SimulatorStat
     override fun reset() {
         this.cache.reset()
     }
-    private data class CSR32(var content: KorAtomicInt, val specialRegisterRights: SpecialRegisterRights)
+    private data class CSR32(var content: Int, val specialRegisterRights: SpecialRegisterRights)
 }

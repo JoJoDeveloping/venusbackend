@@ -9,7 +9,7 @@ import venusbackend.simulator.Simulator
 import venusbackend.simulator.SpecialRegisters
 
 class TRTypeImplementation: InstructionImplementation {
-    override suspend fun invoke(mcode: MachineCode, sim: Simulator) {
+    override fun invoke(mcode: MachineCode, sim: Simulator) {
         val last7BitsOfMstatus = sim.getSReg(SpecialRegisters.MSTATUS.address) and 0x7F // Save last 7 bits
         val mpieBit = sim.getSReg(SpecialRegisters.MSTATUS.address) and 0x80 // Take only mpie bit from mstatus
         val mieBitMask = mpieBit shr 4 // build the mask for the mie bit in mstatus
