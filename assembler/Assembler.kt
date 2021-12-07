@@ -415,6 +415,9 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
                     parseAssemblerDirective(args[0], args.drop(1), pline, dbg)
                 } else {
                     allow_custom_memory_segments = false
+                    if (!inTextSegment) {
+                        throw AssemblerError("Instruction found outside text segment in line", dbg)
+                    }
                     val expandedInsts = replacePseudoInstructions(args, dbg)
                     for (inst in expandedInsts) {
 //                        val dbg = DebugInfo(currentLineNumber, line, currentTextOffset, prog)
@@ -572,6 +575,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".byte" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 for (arg in args) {
                     val byte = userStringToInt(arg)
                     if (byte !in -127..255) {
@@ -583,6 +587,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".string", ".asciiz" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 checkArgsLength(args, 1, dbg)
                 val ascii: String = try {
                     val str = args[0]
@@ -607,6 +612,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".half" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 for (arg in args) {
                     try {
                         val word = userStringToInt(arg)
@@ -627,6 +633,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".word" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 for (arg in args) {
                     try {
                         val word = userStringToInt(arg)
@@ -665,6 +672,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".space" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 checkArgsLength(args, 1, dbg)
                 try {
                     val reps = userStringToInt(args[0])
@@ -678,6 +686,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".align" -> {
+                if (inTextSegment) throw AssemblerError("unexpected align in text segment", dbg)
                 checkArgsLength(args, 1, dbg)
                 val pow2 = userStringToInt(args[0])
                 if (pow2 < 0 || pow2 > 8) {
@@ -708,6 +717,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".float" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 for (arg in args) {
                     try {
                         val float = userStringToFloat(arg)
@@ -730,6 +740,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
             }
 
             ".double" -> {
+                if (inTextSegment) throw AssemblerError("unexpected data in text segment", dbg)
                 for (arg in args) {
                     try {
                         val double = userStringToDouble(arg)
