@@ -50,9 +50,6 @@ open class Simulator(
     val instOrderMapping = HashMap<Int, Int>()
     val invInstOrderMapping = HashMap<Int, Int>()
 
-    val biosInstOrderMapping = HashMap<Int, Int>()
-    val biosInvInstOrderMapping = HashMap<Int, Int>()
-
     var exitcode: Int? = null
     val alloc: Alloc = Alloc(this)
     val plugins = LinkedHashMap<String, SimulatorPlugin>()
@@ -68,15 +65,16 @@ open class Simulator(
         
 
         state.setMaxPC(MemorySegments.BIOS_BEGIN)
-
+        var i = 0
         if (bios != null) {
             println("Loading bios into memory")
             println("This is the bios start address: ${toHex(MemorySegments.BIOS_BEGIN)}")
-            for (k in 0 until bios!!.insts.size) {
-                biosInstOrderMapping[k] = state.getMaxPC().toInt()
-                biosInvInstOrderMapping[state.getMaxPC().toInt()] = k
-                var mcode = (bios!!.insts[k])[InstructionField.ENTIRE]
-                for (j in 0 until bios!!.insts[k].length) {
+            for (inst in bios!!.insts) {
+                instOrderMapping[i] = state.getMaxPC().toInt()
+                invInstOrderMapping[state.getMaxPC().toInt()] = i
+                var mcode = (inst)[InstructionField.ENTIRE]
+                i++
+                for (j in 0 until inst.length) {
                     state.mem.storeByte(state.getMaxPC(), mcode and 0xFF)
                     mcode = mcode shr 8
                     state.incMaxPC(1)
@@ -90,7 +88,7 @@ open class Simulator(
 
         state.setMaxPC(MemorySegments.TEXT_BEGIN)
 
-        var i = 0
+        
         for (inst in linkedProgram.prog.insts) {
             instOrderMapping[i] = state.getMaxPC().toInt()
             invInstOrderMapping[state.getMaxPC().toInt()] = i
