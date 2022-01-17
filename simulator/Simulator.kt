@@ -107,17 +107,19 @@ open class Simulator(
             dataOffset++
         }
         
-        
-
         state.setHeapEnd(max(state.getHeapEnd().toInt(), dataOffset))
+        if (bios != null) {
+            setPC(MemorySegments.BIOS_BEGIN)
+        } else {
+            setPC(linkedProgram.startPC ?: state.getMaxPC()) 
+        }
 
-        setPC(MemorySegments.BIOS_BEGIN) // TODO: check this linkedProgram.startPC ?: MemorySegments.TEXT_BEGIN 
         if (settings.setRegesOnInit) {
             state.setReg(Registers.sp, MemorySegments.STACK_BEGIN)
 //            state.setReg(Registers.fp, MemorySegments.STACK_BEGIN)
             state.setReg(Registers.gp, MemorySegments.STATIC_BEGIN)
             if (linkedProgram.prog.isGlobalLabel("main")) {
-                state.setReg(Registers.ra, linkedProgram.startPC ?: state.getMaxPC())
+                state.setReg(Registers.ra, linkedProgram.startPC ?: state.getMaxPC()) // TODO: Why not ?: MemorySegments.TEXT_BEGIN 
                 settings.ecallOnlyExit = false // This is because this will not work with ecall exit only with this current hotfix
                 try {
                     Renderer.updateRegister(Registers.ra, state.getMaxPC())
