@@ -33,7 +33,7 @@ open class Simulator(
     open val simulatorID: Int = 0,
 //    private val connection: MotherboardConnection? = null,
     var timerFrequency: Long = 5,
-    open val bios: Program? = null
+    open val bios: LinkedProgram? = null
 ) {
 
     private var ECallReceiver: ((String) -> String)? = null
@@ -69,7 +69,7 @@ open class Simulator(
         if (bios != null) {
             println("Loading bios into memory")
             println("This is the bios start address: ${toHex(MemorySegments.BIOS_BEGIN)}")
-            for (inst in bios!!.insts) {
+            for (inst in bios!!.prog.insts) {
                 instOrderMapping[i] = state.getMaxPC().toInt()
                 invInstOrderMapping[state.getMaxPC().toInt()] = i
                 var mcode = (inst)[InstructionField.ENTIRE]
