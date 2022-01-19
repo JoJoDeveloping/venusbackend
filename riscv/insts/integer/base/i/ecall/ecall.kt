@@ -1,6 +1,6 @@
  package venusbackend.riscv.insts.integer.base.i.ecall
 
-import venus.Renderer
+import venus.IRenderer
 import venusbackend.*
 import venusbackend.numbers.QuadWord
 import venusbackend.numbers.toQuadWord
@@ -51,7 +51,7 @@ val ecall = Instruction(
                     if (sim.hasEcallReceiver()) {
                         sendECallJson(whichCall.toInt(), sim)
                     } else {
-                        Renderer.printConsole("Invalid ecall $whichCall")
+                        IRenderer.getRenderer().printConsole("Invalid ecall $whichCall")
                     }
                 }
             }
@@ -81,7 +81,7 @@ val ecall = Instruction(
                     if (sim.hasEcallReceiver()) {
                         sendECallJson(whichCall.toInt(), sim)
                     } else {
-                        Renderer.printConsole("Invalid ecall $whichCall")
+                        IRenderer.getRenderer().printConsole("Invalid ecall $whichCall")
                     }
                 }
             }
@@ -112,7 +112,7 @@ val ecall = Instruction(
                     if (sim.hasEcallReceiver()) {
                         sendECallJson(whichCall.toInt(), sim)
                     } else {
-                        Renderer.printConsole("Invalid ecall $whichCall")
+                        IRenderer.getRenderer().printConsole("Invalid ecall $whichCall")
                     }
                 }
             }
@@ -303,21 +303,21 @@ private fun ferror(sim: Simulator) {
 
 private fun printHex(sim: Simulator) {
     val arg = sim.getReg(11)
-    sim.ecallMsg = Renderer.toHex(arg)
-    Renderer.printConsole(sim.ecallMsg)
+    sim.ecallMsg = IRenderer.getRenderer().toHex(arg)
+    IRenderer.getRenderer().printConsole(sim.ecallMsg)
 }
 
 private fun printInteger(sim: Simulator) {
     val arg = sim.getReg(11)
     sim.ecallMsg = arg.toString()
-    Renderer.printConsole(sim.ecallMsg)
+    IRenderer.getRenderer().printConsole(sim.ecallMsg)
 }
 
 private fun printString(sim: Simulator) {
     val arg = sim.getReg(11)
     val s = getString(sim, arg)
     sim.ecallMsg += s
-    Renderer.printConsole(s)
+    IRenderer.getRenderer().printConsole(s)
 }
 
 private fun atoi(sim: Simulator) {
@@ -347,7 +347,7 @@ private fun exit(sim: Simulator) {
 private fun printChar(sim: Simulator) {
     val arg = sim.getReg(11)
     sim.ecallMsg = (arg.toChar()).toString()
-    Renderer.printConsole(arg.toChar())
+    IRenderer.getRenderer().printConsole(arg.toChar())
 }
 
 private fun exitWithCode(sim: Simulator) {
@@ -355,7 +355,7 @@ private fun exitWithCode(sim: Simulator) {
     val retVal = sim.getReg(11)
     sim.exitcode = retVal.toInt()
     sim.ecallMsg = "\nExited with error code $retVal"
-    Renderer.printConsole("\nExited with error code $retVal\n")
+    IRenderer.getRenderer().printConsole("\nExited with error code $retVal\n")
 }
 
 private fun memdump(sim: Simulator) {

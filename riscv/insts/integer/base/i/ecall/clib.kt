@@ -1,6 +1,6 @@
 package venusbackend.riscv.insts.integer.base.i.ecall
 
-import venus.Renderer
+import venus.IRenderer
 import venusbackend.riscv.Registers
 import venusbackend.simulator.Simulator
 
@@ -12,7 +12,7 @@ fun clib(sim: Simulator) {
         3 -> realloc(sim)
         4 -> free(sim)
         5 -> mallocActiveNumBlocks(sim)
-        else -> Renderer.printConsole("Invalid clib ecall $whichCall")
+        else -> IRenderer.getRenderer().printConsole("Invalid clib ecall $whichCall")
     }
 }
 

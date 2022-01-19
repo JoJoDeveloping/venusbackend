@@ -1,6 +1,6 @@
 package venusbackend.simulator.cache
 
-import venus.Renderer
+import venus.IRenderer
 
 /**
  * Created by thaum on 7/29/2018.
@@ -122,7 +122,7 @@ class Block
      * Prints the block values to standard out.
      */
     override fun toString(): String {
-        var result = ((if (isValid) 1 else 0).toString() + "        " + Renderer.toHex(tag) + "   " +
+        var result = ((if (isValid) 1 else 0).toString() + "        " + IRenderer.getRenderer().toHex(tag) + "   " +
                 (if (isDirty) 1 else 0) + "        ")
 //        for (word in words!!)
 //            result += Renderer.toHex(word) + "     "

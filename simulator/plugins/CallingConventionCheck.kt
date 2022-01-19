@@ -1,6 +1,6 @@
 package venusbackend.simulator.plugins
 
-import venus.Renderer
+import venus.IRenderer
 import venusbackend.plus
 import venusbackend.riscv.InstructionField
 import venusbackend.riscv.MachineCode
@@ -128,17 +128,17 @@ class CallingConventionCheck(var returnOnlya0: Boolean = false) : SimulatorPlugi
     }
 
     fun finish(): Int {
-        Renderer.displayError("Found $errorCnt warnings!")
+        IRenderer.getRenderer().displayError("Found $errorCnt warnings!")
         return errorCnt
     }
 
     fun printViolation(sim: Simulator, s: String) {
         errorCnt++
-        Renderer.displayError("[CC Violation]: (PC=${toHex(prevPC)}) $s ${getDbg(sim)}\n")
+        IRenderer.getRenderer().displayError("[CC Violation]: (PC=${toHex(prevPC)}) $s ${getDbg(sim)}\n")
     }
 
     fun printWarning(sim: Simulator, s: String) {
-        Renderer.displayWarning("[CC Warning]: (PC=${toHex(prevPC)}) $s ${getDbg(sim)}\n")
+        IRenderer.getRenderer().displayWarning("[CC Warning]: (PC=${toHex(prevPC)}) $s ${getDbg(sim)}\n")
     }
 
     fun getRetAddr(): Number? {
@@ -271,7 +271,7 @@ class CallingConventionCheck(var returnOnlya0: Boolean = false) : SimulatorPlugi
 //        val asp = sim.getReg(Registers.sp)
 //        if (esp != asp) {
 //            errorCnt++
-//            Renderer.displayError("[CC Warning]: Stack pointer not correctly restored at PC=${toHex(prevPC)}! ${getDbg()}")
+//            IRenderer.getRenderer().displayError("[CC Warning]: Stack pointer not correctly restored at PC=${toHex(prevPC)}! ${getDbg()}")
 //        }
         popRetAddr()
     }

@@ -1,6 +1,6 @@
 package venusbackend.riscv.insts.integer.base.i.ecall
 
-import venus.Renderer
+import venus.IRenderer
 import venusbackend.simulator.Simulator
 import venusbackend.toHex
 
@@ -55,8 +55,8 @@ data class MallocNode(
             )
 
             if (((uM != upperMagic) || (lM != lowerMagic)) && !ignore_magic) {
-                Renderer.stderr("The magic value for this malloc node is incorrect! This means you are overriding malloc metadata OR have specified the address of an incorrect malloc node!\n")
-                Renderer.stderr(node)
+                IRenderer.getRenderer().stderr("The magic value for this malloc node is incorrect! This means you are overriding malloc metadata OR have specified the address of an incorrect malloc node!\n")
+                IRenderer.getRenderer().stderr(node)
                 return null
             }
             return node
@@ -95,7 +95,7 @@ data class MallocNode(
 
     fun storeNode(sim: Simulator) {
         if (this.nodeAddr == 0) {
-            Renderer.stderr("Prevented a store of a null malloc node!\n")
+            IRenderer.getRenderer().stderr("Prevented a store of a null malloc node!\n")
             return
         }
         this.storeMagic(sim)
@@ -175,13 +175,13 @@ data class MallocNode(
 
     fun freeNode(sim: Simulator) {
         if (this.isFree()) {
-            Renderer.stderr("Double free!\n")
-            Renderer.stderr(this)
+            IRenderer.getRenderer().stderr("Double free!\n")
+            IRenderer.getRenderer().stderr(this)
             return
         }
         if (this.isSentinel()) {
-            Renderer.stderr("You cannot free the sentinel node!\n")
-            Renderer.stderr(this)
+            IRenderer.getRenderer().stderr("You cannot free the sentinel node!\n")
+            IRenderer.getRenderer().stderr(this)
             return
         }
         this.free = 1
@@ -281,8 +281,8 @@ class Alloc(val sim: Simulator) {
             return 0
         }
         var m = MallocNode.loadBlock(sim, sentinelMetadata) ?: run {
-            Renderer.stderr("Failed to get the sentinel metadata block!\n")
-            Renderer.stderr(MallocNode.loadBlock(sim, sentinelMetadata, true) ?: "null")
+            IRenderer.getRenderer().stderr("Failed to get the sentinel metadata block!\n")
+            IRenderer.getRenderer().stderr(MallocNode.loadBlock(sim, sentinelMetadata, true) ?: "null")
             return 0
         }
 
@@ -353,8 +353,8 @@ class Alloc(val sim: Simulator) {
         }
         var counter = 0
         var m = MallocNode.loadBlock(sim, sentinelMetadata) ?: run {
-            Renderer.stderr("Failed to get the sentinel metadata block!\n")
-            Renderer.stderr(MallocNode.loadBlock(sim, sentinelMetadata, true) ?: "null")
+            IRenderer.getRenderer().stderr("Failed to get the sentinel metadata block!\n")
+            IRenderer.getRenderer().stderr(MallocNode.loadBlock(sim, sentinelMetadata, true) ?: "null")
             return -1
         }
         if (m.isNextNull()) {

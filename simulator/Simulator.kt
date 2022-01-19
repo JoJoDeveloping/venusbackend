@@ -2,7 +2,7 @@ package venusbackend.simulator
 
 /* ktlint-disable no-wildcard-imports */
 
-import venus.Renderer
+import venus.IRenderer
 import venus.vfs.VirtualFileSystem
 import venusbackend.*
 import venusbackend.linker.LinkedProgram
@@ -77,7 +77,7 @@ open class Simulator(
                 state.setReg(Registers.ra, state.getMaxPC())
                 settings.ecallOnlyExit = false // This is because this will not work with ecall exit only with this current hotfix
                 try {
-                    Renderer.updateRegister(Registers.ra, state.getMaxPC())
+                    IRenderer.getRenderer().updateRegister(Registers.ra, state.getMaxPC())
                 } catch (e: Exception) {}
             }
         }
@@ -209,7 +209,7 @@ open class Simulator(
             if (e.infe == null) {
                 throw e
             }
-            Renderer.displayError("\n[ERROR]: Could not decode the instruction (0x" + mcode.toString(16) + ") at pc='" + toHex(getPC()) + "'!\n" +
+            IRenderer.getRenderer().displayError("\n[ERROR]: Could not decode the instruction (0x" + mcode.toString(16) + ") at pc='" + toHex(getPC()) + "'!\n" +
                     "Please make sure that you are not jumping to the middle of an instruction!\n")
             throw e
         }
@@ -312,10 +312,10 @@ open class Simulator(
         setRegNoUndo(Registers.a1, spv)
         setRegNoUndo(Registers.sp, spv)
         try {
-            Renderer.updateRegister(Registers.sp, getReg(Registers.sp))
-            Renderer.updateRegister(Registers.a0, getReg(Registers.a0))
-            Renderer.updateRegister(Registers.a1, getReg(Registers.a1))
-            Renderer.updateMemory(Renderer.activeMemoryAddress)
+            IRenderer.getRenderer().updateRegister(Registers.sp, getReg(Registers.sp))
+            IRenderer.getRenderer().updateRegister(Registers.a0, getReg(Registers.a0))
+            IRenderer.getRenderer().updateRegister(Registers.a1, getReg(Registers.a1))
+            IRenderer.getRenderer().updateMemory(IRenderer.getRenderer().activeMemoryAddress)
         } catch (e: Throwable) {}
     }
 
@@ -392,7 +392,7 @@ open class Simulator(
         val location = (getPC() - MemorySegments.TEXT_BEGIN).toLong()
         val inst = invInstOrderMapping[location.toInt()]
         if (inst == null) {
-//            Renderer.displayWarning("""Could not find an instruction mapped to the current address when checking for a breakpoint!""")
+//            IRenderer.getRenderer().displayWarning("""Could not find an instruction mapped to the current address when checking for a breakpoint!""")
             return ebreak
         }
 //        return ebreak || breakpoints[inst]
@@ -423,7 +423,7 @@ open class Simulator(
             if ((addr > heap && addr < sp) ||
                 (upperAddr > heap && upperAddr < sp)) {
                 throw SimulatorError(
-                        "Attempting to access uninitialized memory between the stack and heap. Attempting to access '$bytes' bytes at address '${Renderer.toHex(addr)}'.",
+                        "Attempting to access uninitialized memory between the stack and heap. Attempting to access '$bytes' bytes at address '${IRenderer.getRenderer().toHex(addr)}'.",
                         handled = true)
             }
         }
@@ -432,7 +432,7 @@ open class Simulator(
     fun loadByte(addr: Number): Int = state.mem.loadByte(addr)
     fun loadBytewCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.BYTE.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not BYTE aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not BYTE aligned!")
         }
         this.isValidAccess(addr, MemSize.BYTE.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.BYTE)))
@@ -444,7 +444,7 @@ open class Simulator(
     fun loadHalfWord(addr: Number): Int = state.mem.loadHalfWord(addr)
     fun loadHalfWordwCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.HALF.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not HALF WORD aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not HALF WORD aligned!")
         }
         this.isValidAccess(addr, MemSize.HALF.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.HALF)))
@@ -456,7 +456,7 @@ open class Simulator(
     fun loadWord(addr: Number): Int = state.mem.loadWord(addr)
     fun loadWordwCache(addr: Number): Int {
         if (this.settings.alignedAddress && addr % MemSize.WORD.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not WORD aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not WORD aligned!")
         }
         this.isValidAccess(addr, MemSize.WORD.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.WORD)))
@@ -468,7 +468,7 @@ open class Simulator(
     fun loadLong(addr: Number): Long = state.mem.loadLong(addr)
     fun loadLongwCache(addr: Number): Long {
         if (this.settings.alignedAddress && addr % MemSize.LONG.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not LONG aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not LONG aligned!")
         }
         this.isValidAccess(addr, MemSize.LONG.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.LONG)))
@@ -485,11 +485,11 @@ open class Simulator(
     }
     fun storeBytewCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.BYTE.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not BYTE aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not BYTE aligned!")
         }
         // FIXME change the cast to maxpc to something more generic or make the iterator be generic.
         if (!this.settings.mutableText && addr in (MemorySegments.TEXT_BEGIN + 1 - MemSize.BYTE.size)..state.getMaxPC().toInt()) {
-            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + Renderer.toHex(addr) + "!")
+            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + IRenderer.getRenderer().toHex(addr) + "!")
         }
         this.isValidAccess(addr, MemSize.BYTE.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.BYTE)))
@@ -506,10 +506,10 @@ open class Simulator(
     }
     fun storeHalfWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.HALF.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not HALF WORD aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not HALF WORD aligned!")
         }
         if (!this.settings.mutableText && addr in (MemorySegments.TEXT_BEGIN + 1 - MemSize.HALF.size)..state.getMaxPC().toInt()) {
-            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + Renderer.toHex(addr) + "!")
+            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + IRenderer.getRenderer().toHex(addr) + "!")
         }
         this.isValidAccess(addr, MemSize.HALF.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.HALF)))
@@ -526,10 +526,10 @@ open class Simulator(
     }
     fun storeWordwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.WORD.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not WORD aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not WORD aligned!")
         }
         if (!this.settings.mutableText && addr in (MemorySegments.TEXT_BEGIN + 1 - MemSize.WORD.size)..state.getMaxPC().toInt()) {
-            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + Renderer.toHex(addr) + "!")
+            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + IRenderer.getRenderer().toHex(addr) + "!")
         }
         this.isValidAccess(addr, MemSize.WORD.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.WORD)))
@@ -546,10 +546,10 @@ open class Simulator(
     }
     fun storeLongwCache(addr: Number, value: Number) {
         if (this.settings.alignedAddress && addr % MemSize.LONG.size != 0) {
-            throw AlignmentError("Address: '" + Renderer.toHex(addr) + "' is not long aligned!")
+            throw AlignmentError("Address: '" + IRenderer.getRenderer().toHex(addr) + "' is not long aligned!")
         }
         if (!this.settings.mutableText && addr in (MemorySegments.TEXT_BEGIN + 1 - MemSize.WORD.size)..state.getMaxPC().toInt()) {
-            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + Renderer.toHex(addr) + "!")
+            throw StoreError("You are attempting to edit the text of the program though the program is set to immutable at address " + IRenderer.getRenderer().toHex(addr) + "!")
         }
         this.isValidAccess(addr, MemSize.LONG.size)
         preInstruction.add(CacheDiff(Address(addr, MemSize.LONG)))
@@ -565,10 +565,10 @@ open class Simulator(
                 val adjAddr = ((addr / MemSize.WORD.size) * MemSize.WORD.size)
                 val lowerAddr = adjAddr - MemorySegments.TEXT_BEGIN
                 var newInst = this.state.mem.loadWord(adjAddr)
-                preInstruction.add(Renderer.updateProgramListing(lowerAddr, newInst))
+                preInstruction.add(IRenderer.getRenderer().updateProgramListing(lowerAddr, newInst))
                 if ((lowerAddr + MemorySegments.TEXT_BEGIN) != addr && (lowerAddr + MemSize.WORD.size - MemSize.BYTE.size) < state.getMaxPC()) {
                     var newInst2 = this.state.mem.loadWord(adjAddr + MemSize.WORD.size)
-                    preInstruction.add(Renderer.updateProgramListing((lowerAddr) + 4, newInst2))
+                    preInstruction.add(IRenderer.getRenderer().updateProgramListing((lowerAddr) + 4, newInst2))
                 }
             } catch (e: Throwable) { /*This is to not error the tests.*/ }
         }

@@ -1,8 +1,8 @@
 package venusbackend.assembler
 /* ktlint-disable no-wildcard-imports */
+import venus.IRenderer
 import venusbackend.riscv.InitInstructions
 import venusbackend.assembler.pseudos.checkArgsLength
-import venus.Renderer
 import venusbackend.riscv.*
 import venusbackend.riscv.insts.InstructionNotFoundError
 import venusbackend.riscv.insts.dsl.types.Instruction
@@ -44,7 +44,7 @@ object Assembler {
         if (passTwoOutput.prog.textSize + MemorySegments.TEXT_BEGIN > MemorySegments.STATIC_BEGIN) {
             try {
                 MemorySegments.setTextBegin(MemorySegments.STATIC_BEGIN - passOneProg.textSize)
-                Renderer.updateText()
+                IRenderer.getRenderer().updateText()
                 val pone = AssemblerPassOne(text, name, abspath).run()
                 passOneProg = pone.prog
                 passOneErrors = pone.errors
@@ -561,7 +561,7 @@ internal class AssemblerPassOne(private val text: String, name: String = "anonym
                 if (!listOf(16, 32, 64, 128).contains(instwidth)) {
                     throw AssemblerError("Unknown instruction size!", dbg)
                 }
-                Renderer.displayWarning("Will set width to $instwidth!")
+                IRenderer.getRenderer().displayWarning("Will set width to $instwidth!")
             }
 
             ".data_start" -> {
